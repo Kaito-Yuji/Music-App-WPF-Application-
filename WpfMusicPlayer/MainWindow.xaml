@@ -363,7 +363,7 @@
                         </Grid.ColumnDefinitions>
 
                         <TextBlock Grid.Column="0" x:Name="CurrentTimeText" Text="0:00" 
-                                   Foreground="Gray" FontSize="12" VerticalAlignment="Top" Margin="0,-20,10,0" Grid.ColumnSpan="2"/>
+                                   Foreground="Gray" FontSize="12" VerticalAlignment="Top" Margin="0,-19,10,0" Grid.ColumnSpan="2" Height="15"/>
 
                         <Slider x:Name="ProgressSlider" 
                                 Minimum="0" 
@@ -374,7 +374,7 @@
                                 PreviewMouseLeftButtonUp="ProgressSlider_PreviewMouseLeftButtonUp" Grid.ColumnSpan="3" Margin="27,-20,32,0" Grid.Column="1"/>
 
                         <TextBlock Grid.Column="3" x:Name="TotalTimeText" Text="0:00" 
-                                   Foreground="Gray" FontSize="12" VerticalAlignment="Top" Margin="10,-20,0,0"/>
+                                   Foreground="Gray" FontSize="12" VerticalAlignment="Top" Margin="10,-19,0,0" Height="15"/>
                     </Grid>
                 </StackPanel>
 

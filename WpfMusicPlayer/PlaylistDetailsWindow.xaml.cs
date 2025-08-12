@@ -91,10 +91,10 @@ namespace WpfMusicPlayer
 
         private void PlayAllButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_playlist.Songs.Count > 0)
+            if (_filteredSongs.Count > 0)
             {
-                _playerService.SetQueue(_playlist.Songs, 0);
-                _playerService.PlaySong(_playlist.Songs[0]);
+                _playerService.SetQueue(_filteredSongs, 0);
+                _playerService.PlaySong(_filteredSongs[0]);
                 StatusText.Text = "Playing playlist...";
             }
         }
@@ -115,6 +115,9 @@ namespace WpfMusicPlayer
                 {
                     _playlist.CoverImage = dialog.PlaylistCover;
                 }
+                
+                // Save the playlist changes
+                _musicLibrary.UpdatePlaylist(_playlist);
                 
                 // Refresh the display
                 PlaylistNameText.Text = _playlist.Name;
@@ -158,10 +161,15 @@ namespace WpfMusicPlayer
         {
             if (PlaylistSongsListView.SelectedItem is Song song)
             {
-                var index = _playlist.Songs.IndexOf(song);
-                _playerService.SetQueue(_playlist.Songs, index);
-                _playerService.PlaySong(song);
-                StatusText.Text = $"Now playing: {song.Title}";
+                // Use the filtered songs collection and find the correct index within it
+                var index = _filteredSongs.IndexOf(song);
+                if (index >= 0)
+                {
+                    // Set the queue to the filtered songs collection (what's currently displayed)
+                    _playerService.SetQueue(_filteredSongs, index);
+                    _playerService.PlaySong(song);
+                    StatusText.Text = $"Now playing: {song.Title}";
+                }
             }
         }
 
