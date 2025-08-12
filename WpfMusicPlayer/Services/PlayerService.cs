@@ -114,6 +114,27 @@ namespace WpfMusicPlayer.Services
             }
         }
 
+        public void PlaySongDirectly(Song song)
+        {
+            // Simple direct playback - just play the damn song!
+            CurrentSong = song;
+            
+            try
+            {
+                _audioService.LoadFile(song.FilePath);
+                _audioService.Play();
+                _positionTimer.Start();
+                
+                OnPropertyChanged(nameof(PlaybackState));
+                OnPropertyChanged(nameof(TotalDuration));
+                PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error playing song: {ex.Message}");
+            }
+        }
+
         public void PlaySongAtIndex(int index)
         {
             if (index < 0 || index >= Queue.Count)

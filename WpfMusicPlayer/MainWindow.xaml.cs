@@ -193,9 +193,21 @@ namespace WpfMusicPlayer
         private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
         {
             if (_playerService.PlaybackState == PlaybackState.Playing)
+            {
                 _playerService.Pause();
+            }
             else
-                _playerService.Play();
+            {
+                // If no song is currently playing, play the selected song
+                if (_playerService.CurrentSong == null && SongsListView.SelectedItem is Song selectedSong)
+                {
+                    _playerService.PlaySongDirectly(selectedSong);
+                }
+                else
+                {
+                    _playerService.Play();
+                }
+            }
         }
 
         private void StopButton_Click(object sender, RoutedEventArgs e)
@@ -205,12 +217,36 @@ namespace WpfMusicPlayer
 
         private void NextButton_Click(object sender, RoutedEventArgs e)
         {
-            _playerService.PlayNext();
+            // UI-driven approach - update selection first, then play
+            var currentIndex = SongsListView.SelectedIndex;
+            if (currentIndex < DisplayedSongs.Count - 1)
+            {
+                // Move to next song in the list
+                SongsListView.SelectedIndex = currentIndex + 1;
+                
+                // Play the newly selected song
+                if (SongsListView.SelectedItem is Song nextSong)
+                {
+                    _playerService.PlaySongDirectly(nextSong);
+                }
+            }
         }
 
         private void PreviousButton_Click(object sender, RoutedEventArgs e)
         {
-            _playerService.PlayPrevious();
+            // UI-driven approach - update selection first, then play
+            var currentIndex = SongsListView.SelectedIndex;
+            if (currentIndex > 0)
+            {
+                // Move to previous song in the list
+                SongsListView.SelectedIndex = currentIndex - 1;
+                
+                // Play the newly selected song
+                if (SongsListView.SelectedItem is Song prevSong)
+                {
+                    _playerService.PlaySongDirectly(prevSong);
+                }
+            }
         }
 
         private void ShuffleButton_Click(object sender, RoutedEventArgs e)
@@ -252,8 +288,8 @@ namespace WpfMusicPlayer
         {
             if (SongsListView.SelectedItem is Song song)
             {
-                _playerService.SetQueue(DisplayedSongs, DisplayedSongs.IndexOf(song));
-                _playerService.PlaySong(song);
+                // Simple direct playback - no complex queue bullshit
+                _playerService.PlaySongDirectly(song);
             }
         }
 
@@ -261,7 +297,8 @@ namespace WpfMusicPlayer
         {
             if (QueueListBox.SelectedItem is Song song)
             {
-                _playerService.PlaySong(song);
+                // Simple direct playback for queue items too
+                _playerService.PlaySongDirectly(song);
             }
         }
 
