@@ -33,7 +33,6 @@ namespace WpfMusicPlayer
             
             RefreshSongsList();
             
-            // Set up search placeholder behavior
             SearchTextBox.GotFocus += (s, e) =>
             {
                 if (SearchTextBox.Text == "Search in playlist...")
@@ -94,7 +93,7 @@ namespace WpfMusicPlayer
             if (_filteredSongs.Count > 0)
             {
                 _playerService.SetQueue(_filteredSongs, 0);
-                _playerService.PlaySong(_filteredSongs[0]);
+                _playerService.PlaySongAtIndex(0);
                 StatusText.Text = "Playing playlist...";
             }
         }
@@ -161,15 +160,9 @@ namespace WpfMusicPlayer
         {
             if (PlaylistSongsListView.SelectedItem is Song song)
             {
-                // Use the filtered songs collection and find the correct index within it
-                var index = _filteredSongs.IndexOf(song);
-                if (index >= 0)
-                {
-                    // Set the queue to the filtered songs collection (what's currently displayed)
-                    _playerService.SetQueue(_filteredSongs, index);
-                    _playerService.PlaySong(song);
-                    StatusText.Text = $"Now playing: {song.Title}";
-                }
+                // Play song from the filtered playlist collection
+                _playerService.PlaySongFromCollection(song, _filteredSongs);
+                StatusText.Text = $"Now playing: {song.Title}";
             }
         }
 

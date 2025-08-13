@@ -8,7 +8,7 @@
     <Window.Resources>
         <converters:ByteArrayToImageConverter x:Key="ByteArrayToImageConverter"/>
         <converters:ListViewItemIndexConverter x:Key="ListViewItemIndexConverter"/>
-        
+
         <Style x:Key="ModernButton" TargetType="Button">
             <Setter Property="Background" Value="#2d2d30"/>
             <Setter Property="Foreground" Value="White"/>
@@ -80,13 +80,13 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="PlayAllButton" Content="▶️ Play All" 
                             Style="{StaticResource ModernButton}" 
-                            Background="#1db954" Click="PlayAllButton_Click"/>
+                            Background="#1db954" Click="PlayAllButton_Click" Height="26" Width="63"/>
                     <Button x:Name="EditPlaylistButton" Content="✏️ Edit" 
                             Style="{StaticResource ModernButton}" 
-                            Click="EditPlaylistButton_Click"/>
+                            Click="EditPlaylistButton_Click" Width="55"/>
                     <Button x:Name="CloseButton" Content="❌ Close" 
                             Style="{StaticResource ModernButton}" 
-                            Click="CloseButton_Click"/>
+                            Click="CloseButton_Click" Width="58"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -103,9 +103,9 @@
                          Padding="10" FontSize="14" 
                          TextChanged="SearchTextBox_TextChanged"
                          Text="Search in playlist..."/>
-                <Button Grid.Column="1" x:Name="AddSongsButton" Content="➕ Add Songs"
+                <Button x:Name="AddSongsButton" Content="➕ Add Songs"
                         Style="{StaticResource ModernButton}"
-                        Background="#1db954" Click="AddSongsButton_Click"/>
+                        Background="#1db954" Click="AddSongsButton_Click" Grid.ColumnSpan="2" Margin="855,5,5,5"/>
             </Grid>
         </Border>
 

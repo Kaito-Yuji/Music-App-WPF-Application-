@@ -62,14 +62,14 @@ namespace WpfMusicPlayer.Converters
             {
                 return playMode switch
                 {
-                    Models.PlayMode.Normal => "🔁",
-                    Models.PlayMode.RepeatOne => "🔂",
-                    Models.PlayMode.RepeatAll => "🔁",
-                    Models.PlayMode.Shuffle => "🔀",
-                    _ => "🔁"
+                    Models.PlayMode.Normal => "� Normal",
+                    Models.PlayMode.RepeatOne => "🔂 Repeat One",
+                    Models.PlayMode.RepeatAll => "🔁 Repeat All",
+                    Models.PlayMode.Shuffle => "🔀 Shuffle",
+                    _ => "� Normal"
                 };
             }
-            return "🔁";
+            return "� Normal";
         }
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

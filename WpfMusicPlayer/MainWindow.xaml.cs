@@ -10,6 +10,7 @@ using WpfMusicPlayer.Models;
 using WpfMusicPlayer.Services;
 using WpfMusicPlayer.Properties;
 using System.IO;
+using System.Linq;
 
 namespace WpfMusicPlayer
 {
@@ -114,6 +115,9 @@ namespace WpfMusicPlayer
         private void OnCurrentSongChanged(object? sender, EventArgs e)
         {
             OnPropertyChanged(nameof(_playerService.CurrentSong));
+            
+            // Update UI selection to reflect the current song
+            UpdateUISelection();
         }
 
         private void OnPlaybackStateChanged(object? sender, EventArgs e)
@@ -217,34 +221,43 @@ namespace WpfMusicPlayer
 
         private void NextButton_Click(object sender, RoutedEventArgs e)
         {
-            // UI-driven approach - update selection first, then play
-            var currentIndex = SongsListView.SelectedIndex;
-            if (currentIndex < DisplayedSongs.Count - 1)
+            // If no queue, use the displayed songs as queue
+            if (_playerService.Queue.Count == 0 && DisplayedSongs.Count > 0)
             {
-                // Move to next song in the list
-                SongsListView.SelectedIndex = currentIndex + 1;
-                
-                // Play the newly selected song
-                if (SongsListView.SelectedItem is Song nextSong)
-                {
-                    _playerService.PlaySongDirectly(nextSong);
-                }
+                _playerService.SetQueue(DisplayedSongs, 0);
             }
+            
+            // Use PlayerService's proper next logic that respects play modes
+            _playerService.PlayNext();
+            
+            // Update UI selection to reflect the new current song
+            UpdateUISelection();
         }
 
         private void PreviousButton_Click(object sender, RoutedEventArgs e)
         {
-            // UI-driven approach - update selection first, then play
-            var currentIndex = SongsListView.SelectedIndex;
-            if (currentIndex > 0)
+            // If no queue, use the displayed songs as queue
+            if (_playerService.Queue.Count == 0 && DisplayedSongs.Count > 0)
             {
-                // Move to previous song in the list
-                SongsListView.SelectedIndex = currentIndex - 1;
-                
-                // Play the newly selected song
-                if (SongsListView.SelectedItem is Song prevSong)
+                _playerService.SetQueue(DisplayedSongs, 0);
+            }
+            
+            // Use PlayerService's proper previous logic that respects play modes
+            _playerService.PlayPrevious();
+            
+            // Update UI selection to reflect the new current song
+            UpdateUISelection();
+        }
+        
+        private void UpdateUISelection()
+        {
+            if (_playerService.CurrentSong != null)
+            {
+                var songInDisplay = DisplayedSongs.FirstOrDefault(s => s.Id == _playerService.CurrentSong.Id);
+                if (songInDisplay != null)
                 {
-                    _playerService.PlaySongDirectly(prevSong);
+                    SongsListView.SelectedItem = songInDisplay;
+                    SongsListView.ScrollIntoView(songInDisplay);
                 }
             }
         }
@@ -259,6 +272,7 @@ namespace WpfMusicPlayer
                 PlayMode.Shuffle => PlayMode.Normal,
                 _ => PlayMode.Normal
             };
+            
             OnPropertyChanged(nameof(_playerService.PlayMode));
         }
 
@@ -288,8 +302,8 @@ namespace WpfMusicPlayer
         {
             if (SongsListView.SelectedItem is Song song)
             {
-                // Simple direct playback - no complex queue bullshit
-                _playerService.PlaySongDirectly(song);
+                // Set the current displayed songs as queue and play the selected song
+                _playerService.PlaySongFromCollection(song, DisplayedSongs);
             }
         }
 
