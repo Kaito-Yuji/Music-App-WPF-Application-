@@ -66,6 +66,55 @@ namespace WpfMusicPlayer
                 if (string.IsNullOrWhiteSpace(SearchTextBox.Text))
                     SearchTextBox.Text = "Search songs, artists, albums...";
             };
+
+            // Add size changed event for responsive columns
+            SizeChanged += MainWindow_SizeChanged;
+            Loaded += MainWindow_Loaded;
+        }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            UpdateColumnWidths();
+        }
+
+        private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            UpdateColumnWidths();
+        }
+
+        private void UpdateColumnWidths()
+        {
+            if (SongsListView?.View is GridView gridView && gridView.Columns.Count >= 6)
+            {
+                var availableWidth = SongsListView.ActualWidth - 40; // Account for scrollbar and padding
+                
+                if (availableWidth > 0)
+                {
+                    // Fixed width columns
+                    var coverWidth = 80;
+                    var durationWidth = 80;
+                    var actionsWidth = 150;
+                    
+                    // Calculate remaining width for flexible columns
+                    var remainingWidth = availableWidth - coverWidth - durationWidth - actionsWidth;
+                    
+                    if (remainingWidth > 300) // Ensure minimum width for text columns
+                    {
+                        // Distribute remaining width: Title gets 40%, Artist and Album get 30% each
+                        var titleWidth = Math.Max(150, remainingWidth * 0.4);
+                        var artistWidth = Math.Max(120, remainingWidth * 0.3);
+                        var albumWidth = Math.Max(120, remainingWidth * 0.3);
+                        
+                        // Set the widths
+                        gridView.Columns[0].Width = coverWidth;     // Cover
+                        gridView.Columns[1].Width = titleWidth;    // Title
+                        gridView.Columns[2].Width = artistWidth;   // Artist
+                        gridView.Columns[3].Width = albumWidth;    // Album
+                        gridView.Columns[4].Width = durationWidth; // Duration
+                        gridView.Columns[5].Width = actionsWidth;  // Actions
+                    }
+                }
+            }
         }
 
         private void SetupTimers()
@@ -196,6 +245,51 @@ namespace WpfMusicPlayer
                 if (dialog.ShowDialog() == true && dialog.SelectedPlaylist != null)
                 {
                     _musicService.AddSongToPlaylist(dialog.SelectedPlaylist, song);
+                }
+            }
+        }
+
+        private void EditSongButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is Song song)
+            {
+                var dialog = new SongEditDialog(song);
+                dialog.Owner = this;
+                
+                if (dialog.ShowDialog() == true && dialog.WasModified)
+                {
+                    // Update the song with the edited information
+                    var editedSong = dialog.EditedSong;
+                    
+                    // Update the original song object
+                    song.Title = editedSong.Title;
+                    song.Artist = editedSong.Artist;
+                    song.Album = editedSong.Album;
+                    song.Genre = editedSong.Genre;
+                    song.Year = editedSong.Year;
+                    song.AlbumArt = editedSong.AlbumArt;
+
+                    // Save the changes to the file's metadata if possible
+                    try
+                    {
+                        _musicService.UpdateSongMetadata(song);
+                        StatusTextBlock.Text = $"Updated metadata for '{song.Title}'";
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Song information updated in the app, but failed to save to file: {ex.Message}", 
+                            "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        StatusTextBlock.Text = $"Updated '{song.Title}' (app only)";
+                    }
+
+                    // Refresh the UI to show the updated information
+                    RefreshSongDisplay();
+                    
+                    // If this is the currently playing song, update the now playing display
+                    if (_musicService.CurrentSong?.Id == song.Id)
+                    {
+                        OnPropertyChanged(nameof(_musicService.CurrentSong));
+                    }
                 }
             }
         }
@@ -418,6 +512,21 @@ namespace WpfMusicPlayer
             DisplayedSongs.Clear();
             foreach (var song in songs)
                 DisplayedSongs.Add(song);
+        }
+
+        private void RefreshSongDisplay()
+        {
+            // Force refresh of the ListView by updating the collection
+            var currentSongs = DisplayedSongs.ToList();
+            UpdateDisplayedSongs(currentSongs);
+            
+            // Refresh current search results if search is active
+            if (SearchTextBox.Text != "Search songs, artists, albums..." && !string.IsNullOrWhiteSpace(SearchTextBox.Text))
+            {
+                var results = _musicService.SearchSongs(SearchTextBox.Text);
+                UpdateDisplayedSongs(results);
+                StatusTextBlock.Text = $"Found {results.Count} songs";
+            }
         }
 
         #endregion

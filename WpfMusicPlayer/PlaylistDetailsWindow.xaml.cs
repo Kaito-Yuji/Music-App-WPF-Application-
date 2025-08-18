@@ -42,6 +42,57 @@ namespace WpfMusicPlayer
                 if (string.IsNullOrWhiteSpace(SearchTextBox.Text))
                     SearchTextBox.Text = "Search in playlist...";
             };
+
+            // Add responsive column sizing
+            SizeChanged += PlaylistDetailsWindow_SizeChanged;
+            Loaded += PlaylistDetailsWindow_Loaded;
+        }
+
+        private void PlaylistDetailsWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            UpdateColumnWidths();
+        }
+
+        private void PlaylistDetailsWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            UpdateColumnWidths();
+        }
+
+        private void UpdateColumnWidths()
+        {
+            if (PlaylistSongsListView?.View is GridView gridView && gridView.Columns.Count >= 7)
+            {
+                var availableWidth = PlaylistSongsListView.ActualWidth - 40; // Account for scrollbar and padding
+                
+                if (availableWidth > 0)
+                {
+                    // Fixed width columns
+                    var numberWidth = 40;
+                    var coverWidth = 80;
+                    var durationWidth = 80;
+                    var actionsWidth = 80;
+                    
+                    // Calculate remaining width for flexible columns
+                    var remainingWidth = availableWidth - numberWidth - coverWidth - durationWidth - actionsWidth;
+                    
+                    if (remainingWidth > 300) // Ensure minimum width for text columns
+                    {
+                        // Distribute remaining width: Title gets 40%, Artist and Album get 30% each
+                        var titleWidth = Math.Max(150, remainingWidth * 0.4);
+                        var artistWidth = Math.Max(120, remainingWidth * 0.3);
+                        var albumWidth = Math.Max(120, remainingWidth * 0.3);
+                        
+                        // Set the widths
+                        gridView.Columns[0].Width = numberWidth;   // #
+                        gridView.Columns[1].Width = coverWidth;   // Cover
+                        gridView.Columns[2].Width = titleWidth;   // Title
+                        gridView.Columns[3].Width = artistWidth;  // Artist
+                        gridView.Columns[4].Width = albumWidth;   // Album
+                        gridView.Columns[5].Width = durationWidth; // Duration
+                        gridView.Columns[6].Width = actionsWidth; // Actions
+                    }
+                }
+            }
         }
 
         private void RefreshSongsList()

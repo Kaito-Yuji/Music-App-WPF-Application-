@@ -239,6 +239,12 @@ namespace WpfMusicPlayer.Services
                 ScanProgressChanged?.Invoke(this, $"Scanning... {i + 1}/{files.Count}");
             }
 
+            // After scanning is complete, relink playlists to use the actual song objects
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                RelinkPlaylistSongs();
+            });
+
             ScanProgressChanged?.Invoke(this, "Scan completed");
         }
 
@@ -284,6 +290,46 @@ namespace WpfMusicPlayer.Services
                 s.Genre.ToLowerInvariant().Contains(query)
             ).ToList();
         }
+
+        public void UpdateSongMetadata(Song song)
+        {
+            try
+            {
+                // Update the song metadata in the file using TagLib
+                using var file = TagLib.File.Create(song.FilePath);
+                
+                // Update basic metadata
+                file.Tag.Title = song.Title;
+                file.Tag.Performers = new[] { song.Artist };
+                file.Tag.Album = song.Album;
+                file.Tag.Genres = string.IsNullOrWhiteSpace(song.Genre) ? new string[0] : new[] { song.Genre };
+                file.Tag.Year = song.Year > 0 ? (uint)song.Year : 0;
+
+                // Update album art if provided
+                if (song.AlbumArt != null && song.AlbumArt.Length > 0)
+                {
+                    var picture = new TagLib.Picture(song.AlbumArt)
+                    {
+                        Type = TagLib.PictureType.FrontCover,
+                        Description = "Album Art"
+                    };
+                    file.Tag.Pictures = new[] { picture };
+                }
+                else
+                {
+                    // Remove album art if set to null
+                    file.Tag.Pictures = new TagLib.Picture[0];
+                }
+
+                // Save the changes to the file
+                file.Save();
+            }
+            catch (Exception ex)
+            {
+                // If file updating fails, throw to let the caller handle it
+                throw new InvalidOperationException($"Failed to update metadata for '{song.Title}': {ex.Message}", ex);
+            }
+        }
         #endregion
 
         #region Playlist Methods
@@ -308,9 +354,19 @@ namespace WpfMusicPlayer.Services
 
         public void AddSongToPlaylist(Playlist playlist, Song song)
         {
-            if (!playlist.Songs.Contains(song))
+            // Check if the song is already in the playlist (uses the new equality comparison)
+            if (!playlist.Songs.Any(s => s.Equals(song)))
             {
-                playlist.Songs.Add(song);
+                // Try to find the existing song in our main collection to maintain reference
+                var existingSong = Songs.FirstOrDefault(s => s.Equals(song));
+                if (existingSong != null)
+                {
+                    playlist.Songs.Add(existingSong);
+                }
+                else
+                {
+                    playlist.Songs.Add(song);
+                }
                 SavePlaylistsToFile();
             }
         }
@@ -402,31 +458,53 @@ namespace WpfMusicPlayer.Services
                     {
                         foreach (var songElement in songsElement.EnumerateArray())
                         {
-                            var song = new Song
+                            var songId = songElement.GetProperty("Id").GetString() ?? "";
+                            var filePath = songElement.GetProperty("FilePath").GetString() ?? "";
+                            
+                            // First try to find the song in the existing Songs collection by ID
+                            var existingSong = Songs.FirstOrDefault(s => s.Id == songId);
+                            
+                            // If not found by ID, try to find by file path
+                            if (existingSong == null && !string.IsNullOrEmpty(filePath))
                             {
-                                Id = songElement.GetProperty("Id").GetString() ?? Guid.NewGuid().ToString(),
-                                Title = songElement.GetProperty("Title").GetString() ?? "Unknown Title",
-                                Artist = songElement.GetProperty("Artist").GetString() ?? "Unknown Artist",
-                                Album = songElement.GetProperty("Album").GetString() ?? "Unknown Album",
-                                Genre = songElement.GetProperty("Genre").GetString() ?? "Unknown",
-                                Year = songElement.GetProperty("Year").GetInt32(),
-                                FilePath = songElement.GetProperty("FilePath").GetString() ?? "",
-                                Duration = TimeSpan.FromSeconds(songElement.GetProperty("Duration").GetDouble())
-                            };
-
-                            if (songElement.TryGetProperty("AlbumArt", out var albumArtElement) && 
-                                albumArtElement.ValueKind != JsonValueKind.Null)
-                            {
-                                var base64String = albumArtElement.GetString();
-                                if (!string.IsNullOrEmpty(base64String))
-                                {
-                                    song.AlbumArt = Convert.FromBase64String(base64String);
-                                }
+                                existingSong = Songs.FirstOrDefault(s => s.FilePath == filePath);
                             }
-
-                            if (System.IO.File.Exists(song.FilePath))
+                            
+                            if (existingSong != null && System.IO.File.Exists(existingSong.FilePath))
                             {
-                                playlist.Songs.Add(song);
+                                // Use the existing song object to maintain reference
+                                playlist.Songs.Add(existingSong);
+                            }
+                            else
+                            {
+                                // Only create new song object if not found in existing collection
+                                // This handles cases where the song file might have been moved or the library hasn't been scanned yet
+                                var song = new Song
+                                {
+                                    Id = songId,
+                                    Title = songElement.GetProperty("Title").GetString() ?? "Unknown Title",
+                                    Artist = songElement.GetProperty("Artist").GetString() ?? "Unknown Artist",
+                                    Album = songElement.GetProperty("Album").GetString() ?? "Unknown Album",
+                                    Genre = songElement.GetProperty("Genre").GetString() ?? "Unknown",
+                                    Year = songElement.GetProperty("Year").GetInt32(),
+                                    FilePath = filePath,
+                                    Duration = TimeSpan.FromSeconds(songElement.GetProperty("Duration").GetDouble())
+                                };
+
+                                if (songElement.TryGetProperty("AlbumArt", out var albumArtElement) && 
+                                    albumArtElement.ValueKind != JsonValueKind.Null)
+                                {
+                                    var base64String = albumArtElement.GetString();
+                                    if (!string.IsNullOrEmpty(base64String))
+                                    {
+                                        song.AlbumArt = Convert.FromBase64String(base64String);
+                                    }
+                                }
+
+                                if (System.IO.File.Exists(song.FilePath))
+                                {
+                                    playlist.Songs.Add(song);
+                                }
                             }
                         }
                     }
@@ -437,6 +515,40 @@ namespace WpfMusicPlayer.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading playlists: {ex.Message}");
+            }
+        }
+
+        private void RelinkPlaylistSongs()
+        {
+            foreach (var playlist in Playlists)
+            {
+                // Create a list to hold the properly linked songs
+                var linkedSongs = new List<Song>();
+
+                foreach (var playlistSong in playlist.Songs.ToList())
+                {
+                    // Try to find the corresponding song in our main Songs collection
+                    var existingSong = Songs.FirstOrDefault(s => s.Equals(playlistSong));
+                    
+                    if (existingSong != null)
+                    {
+                        // Use the existing song object to maintain reference
+                        linkedSongs.Add(existingSong);
+                    }
+                    else if (System.IO.File.Exists(playlistSong.FilePath))
+                    {
+                        // Keep the playlist song if the file exists but wasn't found in the main collection
+                        linkedSongs.Add(playlistSong);
+                    }
+                    // Otherwise, skip the song (file doesn't exist)
+                }
+
+                // Replace the playlist songs with the properly linked ones
+                playlist.Songs.Clear();
+                foreach (var song in linkedSongs)
+                {
+                    playlist.Songs.Add(song);
+                }
             }
         }
         #endregion

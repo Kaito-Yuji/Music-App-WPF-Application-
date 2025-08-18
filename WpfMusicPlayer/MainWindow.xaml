@@ -104,6 +104,39 @@
         <ControlTemplate x:Key="SliderThumbTemplate" TargetType="Thumb">
             <Ellipse Fill="#1db954" Width="12" Height="12"/>
         </ControlTemplate>
+
+        <Style x:Key="GridViewColumnHeaderStyle" TargetType="GridViewColumnHeader">
+            <Setter Property="Background" Value="#2d2d30"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#404040"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GridViewColumnHeader">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                            Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#404040"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#1e1e1e"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid Background="#121212">
@@ -185,27 +218,49 @@
                 <!-- Songs List -->
                 <ListView x:Name="SongsListView" Grid.Row="1" 
                           Background="Transparent" Foreground="White"
-                          Margin="10,0,10,10" MouseDoubleClick="SongsListView_MouseDoubleClick" SelectionChanged="SongsListView_SelectionChanged">
+                          Margin="10,0,10,10" MouseDoubleClick="SongsListView_MouseDoubleClick" SelectionChanged="SongsListView_SelectionChanged"
+                          BorderThickness="0">
                     <ListView.View>
-                        <GridView>
-                            <GridViewColumn Header="Title" Width="200">
+                        <GridView ColumnHeaderContainerStyle="{StaticResource GridViewColumnHeaderStyle}">
+                            <GridViewColumn Header="Cover" Width="80">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Title}" Foreground="White"/>
+                                        <Border Width="60" Height="60" Background="#2d2d30" CornerRadius="3">
+                                            <Image Source="{Binding AlbumArt, Converter={StaticResource ByteArrayToImageConverter}}"
+                                                   Stretch="UniformToFill"
+                                                   Width="60" Height="60">
+                                                <Image.Style>
+                                                    <Style TargetType="Image">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding AlbumArt}" Value="{x:Null}">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Image.Style>
+                                            </Image>
+                                        </Border>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
-                            <GridViewColumn Header="Artist" Width="150">
+                            <GridViewColumn Header="Title">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Artist}" Foreground="Gray"/>
+                                        <TextBlock Text="{Binding Title}" Foreground="White" TextTrimming="CharacterEllipsis"/>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
-                            <GridViewColumn Header="Album" Width="150">
+                            <GridViewColumn Header="Artist">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Album}" Foreground="Gray"/>
+                                        <TextBlock Text="{Binding Artist}" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Album">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Album}" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
@@ -216,14 +271,22 @@
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
-                            <GridViewColumn Header="Actions" Width="100">
+                            <GridViewColumn Header="Actions" Width="150">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="➕" Style="{StaticResource ModernButton}"
-                                                Width="30" Height="25" Padding="0"
-                                                Click="AddToPlaylistButton_Click"
-                                                Tag="{Binding}"
-                                                ToolTip="Add to Playlist"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="➕" Style="{StaticResource ModernButton}"
+                                                    Width="30" Height="25" Padding="0"
+                                                    Click="AddToPlaylistButton_Click"
+                                                    Tag="{Binding}"
+                                                    ToolTip="Add to Playlist"
+                                                    Margin="0,0,5,0"/>
+                                            <Button Content="✏️" Style="{StaticResource ModernButton}"
+                                                    Width="30" Height="25" Padding="0"
+                                                    Click="EditSongButton_Click"
+                                                    Tag="{Binding}"
+                                                    ToolTip="Edit Song"/>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
