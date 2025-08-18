@@ -453,6 +453,11 @@ namespace WpfMusicPlayer.Services
                 _wavePlayer = new WaveOutEvent();
                 _wavePlayer.Init(_audioFileReader);
                 _wavePlayer.PlaybackStopped += OnPlaybackStopped;
+                
+                // Explicitly reset position and notify UI
+                OnPropertyChanged(nameof(CurrentPosition));
+                OnPropertyChanged(nameof(TotalDuration));
+                PositionChanged?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {

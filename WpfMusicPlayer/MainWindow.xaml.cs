@@ -100,8 +100,16 @@ namespace WpfMusicPlayer
                 CurrentTimeText.Text = position.ToString(@"m\:ss");
                 TotalTimeText.Text = total.ToString(@"m\:ss");
 
-                if (total.TotalSeconds > 0)
+                // Only update slider if we have a valid total duration and position is within bounds
+                if (total.TotalSeconds > 0 && position.TotalSeconds <= total.TotalSeconds)
+                {
                     ProgressSlider.Value = position.TotalSeconds;
+                }
+                else if (total.TotalSeconds > 0)
+                {
+                    // Reset to start if position is out of bounds
+                    ProgressSlider.Value = 0;
+                }
             }
 
             // Update play/pause button
@@ -354,6 +362,45 @@ namespace WpfMusicPlayer
         private void ProgressSlider_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             _isDraggingSlider = true;
+            
+            // Handle clicking on the track to seek to that position
+            if (sender is Slider slider)
+            {
+                var position = e.GetPosition(slider);
+                var percentage = position.X / slider.ActualWidth;
+                var newValue = slider.Minimum + (slider.Maximum - slider.Minimum) * percentage;
+                
+                // Clamp the value within bounds
+                newValue = Math.Max(slider.Minimum, Math.Min(slider.Maximum, newValue));
+                slider.Value = newValue;
+                
+                var newPosition = TimeSpan.FromSeconds(newValue);
+                _musicService.Seek(newPosition);
+            }
+        }
+
+        private void ProgressSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            // Update the current time display when dragging
+            if (_isDraggingSlider)
+            {
+                CurrentTimeText.Text = TimeSpan.FromSeconds(e.NewValue).ToString(@"m\:ss");
+            }
+        }
+
+        private void ProgressSlider_DragStarted(object sender, System.Windows.Controls.Primitives.DragStartedEventArgs e)
+        {
+            _isDraggingSlider = true;
+        }
+
+        private void ProgressSlider_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+        {
+            _isDraggingSlider = false;
+            if (sender is Slider slider)
+            {
+                var newPosition = TimeSpan.FromSeconds(slider.Value);
+                _musicService.Seek(newPosition);
+            }
         }
 
         private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

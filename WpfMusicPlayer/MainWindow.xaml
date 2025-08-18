@@ -360,7 +360,8 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="5"/>
                             <ColumnDefinition Width="27.01"/>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="149*"/>
+                            <ColumnDefinition Width="19*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
@@ -373,9 +374,9 @@
                                 Value="{Binding CurrentPosition, Converter={StaticResource TimeSpanToSecondsConverter}, Mode=OneWay}"
                                 Style="{StaticResource SliderStyle}"
                                 PreviewMouseLeftButtonDown="ProgressSlider_PreviewMouseLeftButtonDown"
-                                PreviewMouseLeftButtonUp="ProgressSlider_PreviewMouseLeftButtonUp" Grid.ColumnSpan="3" Margin="27,-20,32,0" Grid.Column="1"/>
+                                PreviewMouseLeftButtonUp="ProgressSlider_PreviewMouseLeftButtonUp" Grid.ColumnSpan="4" Margin="27,-20,32,0" Grid.Column="1" ValueChanged="ProgressSlider_ValueChanged"/>
 
-                        <TextBlock Grid.Column="3" x:Name="TotalTimeText" Text="0:00" 
+                        <TextBlock Grid.Column="4" x:Name="TotalTimeText" Text="0:00" 
                                    Foreground="Gray" FontSize="12" VerticalAlignment="Top" Margin="10,-19,0,0" Height="15"/>
                     </Grid>
                 </StackPanel>
