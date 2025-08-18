@@ -16,8 +16,7 @@ namespace WpfMusicPlayer
 {
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
-        private readonly MusicLibraryService _musicLibrary;
-        private readonly PlayerService _playerService;
+        private readonly MusicService _musicService;
         private DispatcherTimer? _uiUpdateTimer;
         private bool _isDraggingSlider = false;
 
@@ -27,8 +26,7 @@ namespace WpfMusicPlayer
         {
             InitializeComponent();
             
-            _musicLibrary = new MusicLibraryService();
-            _playerService = new PlayerService();
+            _musicService = new MusicService();
 
             InitializeServices();
             InitializeUI();
@@ -38,23 +36,23 @@ namespace WpfMusicPlayer
 
         private void InitializeServices()
         {
-            _musicLibrary.ScanProgressChanged += (s, message) => 
+            _musicService.ScanProgressChanged += (s, message) => 
             {
                 Dispatcher.Invoke(() => StatusTextBlock.Text = message);
             };
 
-            _playerService.CurrentSongChanged += OnCurrentSongChanged;
-            _playerService.PlaybackStateChanged += OnPlaybackStateChanged;
-            _playerService.PositionChanged += OnPositionChanged;
-            _playerService.QueueChanged += OnQueueChanged;
+            _musicService.CurrentSongChanged += OnCurrentSongChanged;
+            _musicService.PlaybackStateChanged += OnPlaybackStateChanged;
+            _musicService.PositionChanged += OnPositionChanged;
+            _musicService.QueueChanged += OnQueueChanged;
         }
 
         private void InitializeUI()
         {
-            DataContext = _playerService;
+            DataContext = _musicService;
             SongsListView.ItemsSource = DisplayedSongs;
-            PlaylistsListBox.ItemsSource = _musicLibrary.Playlists;
-            QueueListBox.ItemsSource = _playerService.Queue;
+            PlaylistsListBox.ItemsSource = _musicService.Playlists;
+            QueueListBox.ItemsSource = _musicService.Queue;
 
             // Set initial search placeholder behavior
             SearchTextBox.GotFocus += (s, e) =>
@@ -86,9 +84,9 @@ namespace WpfMusicPlayer
             if (!string.IsNullOrWhiteSpace(savedPath) && Directory.Exists(savedPath))
             {
                 StatusTextBlock.Text = "Loading saved music library...";
-                await _musicLibrary.ScanFolderAsync(savedPath);
-                UpdateDisplayedSongs(_musicLibrary.Songs);
-                StatusTextBlock.Text = $"Found {_musicLibrary.Songs.Count} songs from saved folder";
+                await _musicService.ScanFolderAsync(savedPath);
+                UpdateDisplayedSongs(_musicService.Songs);
+                StatusTextBlock.Text = $"Found {_musicService.Songs.Count} songs from saved folder";
             }
         }
 
@@ -96,8 +94,8 @@ namespace WpfMusicPlayer
         {
             if (!_isDraggingSlider)
             {
-                var position = _playerService.CurrentPosition;
-                var total = _playerService.TotalDuration;
+                var position = _musicService.CurrentPosition;
+                var total = _musicService.TotalDuration;
 
                 CurrentTimeText.Text = position.ToString(@"m\:ss");
                 TotalTimeText.Text = total.ToString(@"m\:ss");
@@ -107,14 +105,14 @@ namespace WpfMusicPlayer
             }
 
             // Update play/pause button
-            PlayPauseButton.Content = _playerService.PlaybackState == PlaybackState.Playing ? "⏸️" : "▶️";
+            PlayPauseButton.Content = _musicService.PlaybackState == PlaybackState.Playing ? "⏸️" : "▶️";
         }
 
         #region Event Handlers
 
         private void OnCurrentSongChanged(object? sender, EventArgs e)
         {
-            OnPropertyChanged(nameof(_playerService.CurrentSong));
+            OnPropertyChanged(nameof(_musicService.CurrentSong));
             
             // Update UI selection to reflect the current song
             UpdateUISelection();
@@ -122,17 +120,17 @@ namespace WpfMusicPlayer
 
         private void OnPlaybackStateChanged(object? sender, EventArgs e)
         {
-            OnPropertyChanged(nameof(_playerService.PlaybackState));
+            OnPropertyChanged(nameof(_musicService.PlaybackState));
         }
 
         private void OnPositionChanged(object? sender, EventArgs e)
         {
-            OnPropertyChanged(nameof(_playerService.CurrentPosition));
+            OnPropertyChanged(nameof(_musicService.CurrentPosition));
         }
 
         private void OnQueueChanged(object? sender, EventArgs e)
         {
-            OnPropertyChanged(nameof(_playerService.Queue));
+            OnPropertyChanged(nameof(_musicService.Queue));
         }
 
         #endregion
@@ -149,9 +147,9 @@ namespace WpfMusicPlayer
             if (dialog.ShowDialog(this) == true)
             {
                 StatusTextBlock.Text = "Scanning...";
-                await _musicLibrary.ScanFolderAsync(dialog.SelectedPath);
-                UpdateDisplayedSongs(_musicLibrary.Songs);
-                StatusTextBlock.Text = $"Found {_musicLibrary.Songs.Count} songs";
+                await _musicService.ScanFolderAsync(dialog.SelectedPath);
+                UpdateDisplayedSongs(_musicService.Songs);
+                StatusTextBlock.Text = $"Found {_musicService.Songs.Count} songs";
                 
                 // Save the selected folder path
                 Settings.Default.MusicFolderPath = dialog.SelectedPath;
@@ -164,7 +162,7 @@ namespace WpfMusicPlayer
             var dialog = new PlaylistNameDialog();
             if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.PlaylistName))
             {
-                _musicLibrary.CreatePlaylist(dialog.PlaylistName, dialog.PlaylistDescription, dialog.PlaylistCover);
+                _musicService.CreatePlaylist(dialog.PlaylistName, dialog.PlaylistDescription, dialog.PlaylistCover);
             }
         }
 
@@ -177,7 +175,7 @@ namespace WpfMusicPlayer
                 
                 if (result == MessageBoxResult.Yes)
                 {
-                    _musicLibrary.DeletePlaylist(playlist);
+                    _musicService.DeletePlaylist(playlist);
                 }
             }
         }
@@ -186,49 +184,52 @@ namespace WpfMusicPlayer
         {
             if (sender is Button button && button.Tag is Song song)
             {
-                var dialog = new PlaylistSelectionDialog(_musicLibrary.Playlists);
+                var dialog = new PlaylistSelectionDialog(_musicService.Playlists);
                 if (dialog.ShowDialog() == true && dialog.SelectedPlaylist != null)
                 {
-                    _musicLibrary.AddSongToPlaylist(dialog.SelectedPlaylist, song);
+                    _musicService.AddSongToPlaylist(dialog.SelectedPlaylist, song);
                 }
             }
         }
 
         private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_playerService.PlaybackState == PlaybackState.Playing)
+            if (_musicService.PlaybackState == PlaybackState.Playing)
             {
-                _playerService.Pause();
+                _musicService.Pause();
             }
             else
             {
                 // If no song is currently playing, play the selected song
-                if (_playerService.CurrentSong == null && SongsListView.SelectedItem is Song selectedSong)
+                if (_musicService.CurrentSong == null && SongsListView.SelectedItem is Song selectedSong)
                 {
-                    _playerService.PlaySongDirectly(selectedSong);
+                    _musicService.PlaySongFromCollection(selectedSong, DisplayedSongs);
                 }
                 else
                 {
-                    _playerService.Play();
+                    _musicService.Play();
                 }
             }
-        }
-
-        private void StopButton_Click(object sender, RoutedEventArgs e)
-        {
-            _playerService.Stop();
         }
 
         private void NextButton_Click(object sender, RoutedEventArgs e)
         {
             // If no queue, use the displayed songs as queue
-            if (_playerService.Queue.Count == 0 && DisplayedSongs.Count > 0)
+            if (_musicService.Queue.Count == 0 && DisplayedSongs.Count > 0)
             {
-                _playerService.SetQueue(DisplayedSongs, 0);
+                // Smart queue initialization - start from current song position if available
+                int startIndex = 0;
+                if (_musicService.CurrentSong != null)
+                {
+                    var currentInDisplay = DisplayedSongs.ToList().FindIndex(s => s.Id == _musicService.CurrentSong.Id);
+                    if (currentInDisplay >= 0)
+                        startIndex = currentInDisplay;
+                }
+                _musicService.SetQueue(DisplayedSongs, startIndex);
             }
             
-            // Use PlayerService's proper next logic that respects play modes
-            _playerService.PlayNext();
+            // Use MusicService's proper next logic that respects play modes
+            _musicService.PlayNext();
             
             // Update UI selection to reflect the new current song
             UpdateUISelection();
@@ -237,13 +238,21 @@ namespace WpfMusicPlayer
         private void PreviousButton_Click(object sender, RoutedEventArgs e)
         {
             // If no queue, use the displayed songs as queue
-            if (_playerService.Queue.Count == 0 && DisplayedSongs.Count > 0)
+            if (_musicService.Queue.Count == 0 && DisplayedSongs.Count > 0)
             {
-                _playerService.SetQueue(DisplayedSongs, 0);
+                // Smart queue initialization - start from current song position if available
+                int startIndex = 0;
+                if (_musicService.CurrentSong != null)
+                {
+                    var currentInDisplay = DisplayedSongs.ToList().FindIndex(s => s.Id == _musicService.CurrentSong.Id);
+                    if (currentInDisplay >= 0)
+                        startIndex = currentInDisplay;
+                }
+                _musicService.SetQueue(DisplayedSongs, startIndex);
             }
             
-            // Use PlayerService's proper previous logic that respects play modes
-            _playerService.PlayPrevious();
+            // Use MusicService's proper previous logic that respects play modes
+            _musicService.PlayPrevious();
             
             // Update UI selection to reflect the new current song
             UpdateUISelection();
@@ -251,9 +260,9 @@ namespace WpfMusicPlayer
         
         private void UpdateUISelection()
         {
-            if (_playerService.CurrentSong != null)
+            if (_musicService.CurrentSong != null)
             {
-                var songInDisplay = DisplayedSongs.FirstOrDefault(s => s.Id == _playerService.CurrentSong.Id);
+                var songInDisplay = DisplayedSongs.FirstOrDefault(s => s.Id == _musicService.CurrentSong.Id);
                 if (songInDisplay != null)
                 {
                     SongsListView.SelectedItem = songInDisplay;
@@ -264,23 +273,29 @@ namespace WpfMusicPlayer
 
         private void ShuffleButton_Click(object sender, RoutedEventArgs e)
         {
-            _playerService.PlayMode = _playerService.PlayMode switch
+            // Toggle shuffle on/off like Spotify
+            _musicService.IsShuffleOn = !_musicService.IsShuffleOn;
+            OnPropertyChanged(nameof(_musicService.IsShuffleOn));
+        }
+
+        private void RepeatButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Cycle through repeat modes like Spotify: Off -> RepeatAll -> RepeatOne -> Off
+            _musicService.RepeatMode = _musicService.RepeatMode switch
             {
-                PlayMode.Normal => PlayMode.RepeatAll,
-                PlayMode.RepeatAll => PlayMode.RepeatOne,
-                PlayMode.RepeatOne => PlayMode.Shuffle,
-                PlayMode.Shuffle => PlayMode.Normal,
-                _ => PlayMode.Normal
+                RepeatMode.Off => RepeatMode.RepeatAll,
+                RepeatMode.RepeatAll => RepeatMode.RepeatOne,
+                RepeatMode.RepeatOne => RepeatMode.Off,
+                _ => RepeatMode.Off
             };
-            
-            OnPropertyChanged(nameof(_playerService.PlayMode));
+            OnPropertyChanged(nameof(_musicService.RepeatMode));
         }
 
         private void RemoveFromQueueButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.Tag is Song song)
             {
-                _playerService.RemoveFromQueue(song);
+                _musicService.RemoveFromQueue(song);
             }
         }
 
@@ -293,7 +308,7 @@ namespace WpfMusicPlayer
             if (SearchTextBox.Text == "Search songs, artists, albums...")
                 return;
 
-            var results = _musicLibrary.SearchSongs(SearchTextBox.Text);
+            var results = _musicService.SearchSongs(SearchTextBox.Text);
             UpdateDisplayedSongs(results);
             StatusTextBlock.Text = $"Found {results.Count} songs";
         }
@@ -303,7 +318,7 @@ namespace WpfMusicPlayer
             if (SongsListView.SelectedItem is Song song)
             {
                 // Set the current displayed songs as queue and play the selected song
-                _playerService.PlaySongFromCollection(song, DisplayedSongs);
+                _musicService.PlaySongFromCollection(song, DisplayedSongs);
             }
         }
 
@@ -312,7 +327,7 @@ namespace WpfMusicPlayer
             if (QueueListBox.SelectedItem is Song song)
             {
                 // Simple direct playback for queue items too
-                _playerService.PlaySongDirectly(song);
+                _musicService.PlaySong(song);
             }
         }
 
@@ -320,7 +335,7 @@ namespace WpfMusicPlayer
         {
             if (PlaylistsListBox.SelectedItem is Playlist playlist)
             {
-                var playlistWindow = new PlaylistDetailsWindow(playlist, _musicLibrary, _playerService);
+                var playlistWindow = new PlaylistDetailsWindow(playlist, _musicService);
                 playlistWindow.Owner = this;
                 playlistWindow.ShowDialog();
                 
@@ -333,7 +348,7 @@ namespace WpfMusicPlayer
         {
             _isDraggingSlider = false;
             var newPosition = TimeSpan.FromSeconds(ProgressSlider.Value);
-            _playerService.Seek(newPosition);
+            _musicService.Seek(newPosition);
         }
 
         private void ProgressSlider_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -343,8 +358,8 @@ namespace WpfMusicPlayer
 
         private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (_playerService != null)
-                _playerService.Volume = (float)e.NewValue;
+            if (_musicService != null)
+                _musicService.Volume = (float)e.NewValue;
         }
 
         #endregion
@@ -374,7 +389,7 @@ namespace WpfMusicPlayer
         protected override void OnClosed(EventArgs e)
         {
             _uiUpdateTimer?.Stop();
-            _playerService?.Dispose();
+            _musicService?.Dispose();
             base.OnClosed(e);
         }
 

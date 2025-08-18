@@ -10,17 +10,15 @@ namespace WpfMusicPlayer
     public partial class PlaylistDetailsWindow : Window
     {
         private readonly Playlist _playlist;
-        private readonly MusicLibraryService _musicLibrary;
-        private readonly PlayerService _playerService;
+        private readonly MusicService _musicService;
         private readonly ObservableCollection<Song> _filteredSongs;
 
-        public PlaylistDetailsWindow(Playlist playlist, MusicLibraryService musicLibrary, PlayerService playerService)
+        public PlaylistDetailsWindow(Playlist playlist, MusicService musicService)
         {
             InitializeComponent();
             
             _playlist = playlist;
-            _musicLibrary = musicLibrary;
-            _playerService = playerService;
+            _musicService = musicService;
             _filteredSongs = new ObservableCollection<Song>();
 
             InitializeWindow();
@@ -92,8 +90,8 @@ namespace WpfMusicPlayer
         {
             if (_filteredSongs.Count > 0)
             {
-                _playerService.SetQueue(_filteredSongs, 0);
-                _playerService.PlaySongAtIndex(0);
+                _musicService.SetQueue(_filteredSongs, 0);
+                _musicService.PlaySongAtIndex(0);
                 StatusText.Text = "Playing playlist...";
             }
         }
@@ -116,7 +114,7 @@ namespace WpfMusicPlayer
                 }
                 
                 // Save the playlist changes
-                _musicLibrary.UpdatePlaylist(_playlist);
+                _musicService.UpdatePlaylist(_playlist);
                 
                 // Refresh the display
                 PlaylistNameText.Text = _playlist.Name;
@@ -128,12 +126,12 @@ namespace WpfMusicPlayer
 
         private void AddSongsButton_Click(object sender, RoutedEventArgs e)
         {
-            var songSelectionDialog = new SongSelectionDialog(_musicLibrary.Songs, _playlist.Songs);
+            var songSelectionDialog = new SongSelectionDialog(_musicService.Songs, _playlist.Songs);
             if (songSelectionDialog.ShowDialog() == true)
             {
                 foreach (var song in songSelectionDialog.SelectedSongs)
                 {
-                    _musicLibrary.AddSongToPlaylist(_playlist, song);
+                    _musicService.AddSongToPlaylist(_playlist, song);
                 }
                 RefreshSongsList();
                 StatusText.Text = $"Added {songSelectionDialog.SelectedSongs.Count} songs to playlist";
@@ -149,7 +147,7 @@ namespace WpfMusicPlayer
                 
                 if (result == MessageBoxResult.Yes)
                 {
-                    _musicLibrary.RemoveSongFromPlaylist(_playlist, song);
+                    _musicService.RemoveSongFromPlaylist(_playlist, song);
                     RefreshSongsList();
                     StatusText.Text = "Song removed from playlist";
                 }
@@ -161,7 +159,7 @@ namespace WpfMusicPlayer
             if (PlaylistSongsListView.SelectedItem is Song song)
             {
                 // Play song from the filtered playlist collection
-                _playerService.PlaySongFromCollection(song, _filteredSongs);
+                _musicService.PlaySongFromCollection(song, _filteredSongs);
                 StatusText.Text = $"Now playing: {song.Title}";
             }
         }

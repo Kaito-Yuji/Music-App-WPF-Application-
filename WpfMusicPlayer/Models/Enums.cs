@@ -8,6 +8,13 @@ namespace WpfMusicPlayer.Models
         Shuffle
     }
 
+    public enum RepeatMode
+    {
+        Off,
+        RepeatAll,
+        RepeatOne
+    }
+
     public enum PlaybackState
     {
         Stopped,

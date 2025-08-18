@@ -13,6 +13,8 @@
         <converters:ByteArrayToImageConverter x:Key="ByteArrayToImageConverter"/>
         <converters:TimeSpanToSecondsConverter x:Key="TimeSpanToSecondsConverter"/>
         <converters:PlayModeToStringConverter x:Key="PlayModeToStringConverter"/>
+        <converters:ShuffleToStringConverter x:Key="ShuffleToStringConverter"/>
+        <converters:RepeatModeToStringConverter x:Key="RepeatModeToStringConverter"/>
 
         <Style x:Key="ModernButton" TargetType="Button">
             <Setter Property="Background" Value="#2d2d30"/>
@@ -124,12 +126,12 @@
                     <TextBlock Text="Your Library" Foreground="White" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>
 
                     <Button x:Name="ScanMusicButton" Content="📁 Scan Music Folder" 
-                            Style="{StaticResource ModernButton}" Click="ScanMusicButton_Click"/>
+                            Style="{StaticResource ModernButton}" Click="ScanMusicButton_Click" Height="28"/>
 
                     <TextBlock Text="Playlists" Foreground="White" FontSize="14" FontWeight="Bold" Margin="0,20,0,10"/>
 
                     <Button x:Name="CreatePlaylistButton" Content="➕ Create Playlist" 
-                            Style="{StaticResource ModernButton}" Click="CreatePlaylistButton_Click"/>
+                            Style="{StaticResource ModernButton}" Click="CreatePlaylistButton_Click" Height="31"/>
 
                     <ListBox x:Name="PlaylistsListBox" Background="Transparent" BorderThickness="0"
                              Margin="0,10,0,0" SelectionChanged="PlaylistsListBox_SelectionChanged">
@@ -341,7 +343,7 @@
                 <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center">
                     <!-- Control Buttons -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10" Height="70">
-                        <Button x:Name="ShuffleButton" Content="{Binding PlayMode, Converter={StaticResource PlayModeToStringConverter}, Mode=OneWay}" 
+                        <Button x:Name="ShuffleButton" Content="{Binding IsShuffleOn, Converter={StaticResource ShuffleToStringConverter}, Mode=OneWay}" 
                                 Style="{StaticResource ModernButton}" Click="ShuffleButton_Click"/>
                         <Button x:Name="PreviousButton" Content="⏮️" 
                                 Style="{StaticResource ModernButton}" Click="PreviousButton_Click"/>
@@ -349,8 +351,8 @@
                                 Style="{StaticResource PlayButton}" Click="PlayPauseButton_Click"/>
                         <Button x:Name="NextButton" Content="⏭️" 
                                 Style="{StaticResource ModernButton}" Click="NextButton_Click"/>
-                        <Button x:Name="StopButton" Content="⏹️" 
-                                Style="{StaticResource ModernButton}" Click="StopButton_Click"/>
+                        <Button x:Name="RepeatButton" Content="{Binding RepeatMode, Converter={StaticResource RepeatModeToStringConverter}, Mode=OneWay}" 
+                                Style="{StaticResource ModernButton}" Click="RepeatButton_Click"/>
                     </StackPanel>
 
                     <!-- Progress Bar -->

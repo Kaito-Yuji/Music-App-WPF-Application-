@@ -62,14 +62,54 @@ namespace WpfMusicPlayer.Converters
             {
                 return playMode switch
                 {
-                    Models.PlayMode.Normal => "� Normal",
-                    Models.PlayMode.RepeatOne => "🔂 Repeat One",
-                    Models.PlayMode.RepeatAll => "🔁 Repeat All",
-                    Models.PlayMode.Shuffle => "🔀 Shuffle",
-                    _ => "� Normal"
+                    Models.PlayMode.Normal => "⏭️",
+                    Models.PlayMode.RepeatOne => "🔂",
+                    Models.PlayMode.RepeatAll => "🔁",
+                    Models.PlayMode.Shuffle => "🔀",
+                    _ => "⏭️"
                 };
             }
-            return "� Normal";
+            return "⏭️";
+        }
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class ShuffleToStringConverter : IValueConverter
+    {
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is bool isShuffleOn)
+            {
+                return isShuffleOn ? "🔀" : "➡️"; // Shuffle icon when on, forward arrow when off
+            }
+            return "➡️";
+        }
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class RepeatModeToStringConverter : IValueConverter
+    {
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is Models.RepeatMode repeatMode)
+            {
+                return repeatMode switch
+                {
+                    Models.RepeatMode.Off => "🔁", // Normal repeat icon
+                    Models.RepeatMode.RepeatAll => "🔁", // Repeat all icon (could be highlighted)
+                    Models.RepeatMode.RepeatOne => "🔂", // Repeat one icon
+                    _ => "🔁"
+                };
+            }
+            return "🔁";
         }
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

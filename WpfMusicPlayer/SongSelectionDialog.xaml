@@ -159,10 +159,10 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button x:Name="AddSelectedButton" Content="Add Selected" 
                             Style="{StaticResource ModernButton}" 
-                            Background="#1db954" Click="AddSelectedButton_Click"/>
+                            Background="#1db954" Click="AddSelectedButton_Click" Width="80" Height="21"/>
                     <Button x:Name="CancelButton" Content="Cancel" 
                             Style="{StaticResource ModernButton}" 
-                            Click="CancelButton_Click"/>
+                            Click="CancelButton_Click" Width="45"/>
                 </StackPanel>
             </Grid>
         </Border>
