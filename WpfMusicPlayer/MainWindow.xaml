@@ -15,6 +15,7 @@
         <converters:PlayModeToStringConverter x:Key="PlayModeToStringConverter"/>
         <converters:ShuffleToStringConverter x:Key="ShuffleToStringConverter"/>
         <converters:RepeatModeToStringConverter x:Key="RepeatModeToStringConverter"/>
+        <converters:ListViewItemIndexConverter x:Key="ListViewItemIndexConverter"/>
 
         <Style x:Key="ModernButton" TargetType="Button">
             <Setter Property="Background" Value="#2d2d30"/>
@@ -222,6 +223,15 @@
                           BorderThickness="0">
                     <ListView.View>
                         <GridView ColumnHeaderContainerStyle="{StaticResource GridViewColumnHeaderStyle}">
+                            <GridViewColumn Header="#" Width="40">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=ListViewItem, AncestorLevel=1}, 
+                                                         Converter={StaticResource ListViewItemIndexConverter}}" 
+                                                   Foreground="Gray" HorizontalAlignment="Center"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
                             <GridViewColumn Header="Cover" Width="80">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
