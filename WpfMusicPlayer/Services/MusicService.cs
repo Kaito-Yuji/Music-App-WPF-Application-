@@ -23,6 +23,9 @@ namespace WpfMusicPlayer.Services
         private readonly DispatcherTimer _positionTimer;
         private bool _isLoadingNewSong = false; // Flag to prevent auto-advance when loading new song
         private bool _isSwitchingTrack = false;
+        private readonly string _songStatsFilePath;
+        private Dictionary<string, SongStats> _songStats = new Dictionary<string, SongStats>();
+        private DateTime _lastStatsSave = DateTime.MinValue;
 
         // Audio components
         private IWavePlayer? _wavePlayer;
@@ -175,6 +178,8 @@ namespace WpfMusicPlayer.Services
         public event EventHandler? PositionChanged;
         public event EventHandler? QueueChanged;
         public event EventHandler<string>? ScanProgressChanged;
+        // Raised when a song's view count changes (e.g., crosses 80%)
+        public event EventHandler<Song>? SongViewCountChanged;
         public event PropertyChangedEventHandler? PropertyChanged;
         #endregion
 
@@ -186,6 +191,7 @@ namespace WpfMusicPlayer.Services
             var appFolder = Path.Combine(appDataPath, "WpfMusicPlayer");
             Directory.CreateDirectory(appFolder);
             _playlistsFilePath = Path.Combine(appFolder, "playlists.json");
+            _songStatsFilePath = Path.Combine(appFolder, "song_stats.json");
 
             // Initialize position timer
             _positionTimer = new DispatcherTimer
@@ -196,9 +202,12 @@ namespace WpfMusicPlayer.Services
             {
                 OnPropertyChanged(nameof(CurrentPosition));
                 PositionChanged?.Invoke(this, EventArgs.Empty);
+
+                TryCountSongViewAtThreshold();
             };
 
             LoadPlaylistsFromFile();
+            LoadSongStats();
         }
         #endregion
 
@@ -227,7 +236,10 @@ namespace WpfMusicPlayer.Services
                         Application.Current.Dispatcher.Invoke(() =>
                         {
                             if (!Songs.Any(s => s.FilePath == song.FilePath))
+                            {
+                                ApplyStatsToSong(song);
                                 Songs.Add(song);
+                            }
                         });
                     }
                 }
@@ -554,6 +566,32 @@ namespace WpfMusicPlayer.Services
         #endregion
 
         #region Audio Control Methods
+        private void TryCountSongViewAtThreshold()
+        {
+            try
+            {
+                if (CurrentSong == null || _audioFileReader == null)
+                    return;
+
+                if (CurrentSong.HasCountedView)
+                    return;
+
+                var total = _audioFileReader.TotalTime.TotalSeconds;
+                if (total <= 0)
+                    return;
+
+                var current = _audioFileReader.CurrentTime.TotalSeconds;
+                if (current / total >= 0.8)
+                {
+                    CurrentSong.ViewCount++;
+                    CurrentSong.HasCountedView = true;
+                    UpdateAndPersistStats(CurrentSong);
+                    SongViewCountChanged?.Invoke(this, CurrentSong);
+                }
+            }
+            catch { }
+        }
+
         private void LoadFile(string filePath)
         {
             _isLoadingNewSong = true; // Set flag to prevent auto-advance
@@ -570,6 +608,12 @@ namespace WpfMusicPlayer.Services
                 OnPropertyChanged(nameof(CurrentPosition));
                 OnPropertyChanged(nameof(TotalDuration));
                 PositionChanged?.Invoke(this, EventArgs.Empty);
+
+                // Reset view count flag when starting a track
+                if (CurrentSong != null)
+                {
+                    CurrentSong.HasCountedView = false;
+                }
             }
             catch (Exception ex)
             {
@@ -1065,8 +1109,78 @@ namespace WpfMusicPlayer.Services
             {
                 _positionTimer?.Stop();
                 StopPlayback();
+                SaveSongStatsImmediate();
                 _disposed = true;
             }
+        }
+        #endregion
+
+        #region Statistics Persistence Methods
+        private sealed class SongStats
+        {
+            public int ViewCount { get; set; }
+            public DateTime? LastPlayed { get; set; }
+            public double TotalPlayTimeSeconds { get; set; }
+        }
+
+        private void LoadSongStats()
+        {
+            try
+            {
+                if (!System.IO.File.Exists(_songStatsFilePath))
+                {
+                    _songStats = new Dictionary<string, SongStats>();
+                    return;
+                }
+
+                var json = System.IO.File.ReadAllText(_songStatsFilePath);
+                _songStats = JsonSerializer.Deserialize<Dictionary<string, SongStats>>(json) ?? new Dictionary<string, SongStats>();
+            }
+            catch
+            {
+                _songStats = new Dictionary<string, SongStats>();
+            }
+        }
+
+        private void ApplyStatsToSong(Song song)
+        {
+            if (_songStats.TryGetValue(song.FilePath, out var stats))
+            {
+                song.ViewCount = stats.ViewCount;
+            }
+        }
+
+        private void UpdateAndPersistStats(Song song)
+        {
+            if (!_songStats.TryGetValue(song.FilePath, out var stats))
+            {
+                stats = new SongStats();
+                _songStats[song.FilePath] = stats;
+            }
+
+            stats.ViewCount = song.ViewCount;
+            stats.LastPlayed = DateTime.UtcNow;
+
+            SaveSongStatsDebounced();
+        }
+
+        private void SaveSongStatsDebounced()
+        {
+            if ((DateTime.UtcNow - _lastStatsSave).TotalMilliseconds < 500)
+                return;
+
+            _lastStatsSave = DateTime.UtcNow;
+            SaveSongStatsImmediate();
+        }
+
+        private void SaveSongStatsImmediate()
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(_songStats, new JsonSerializerOptions { WriteIndented = true });
+                System.IO.File.WriteAllText(_songStatsFilePath, json);
+            }
+            catch { }
         }
         #endregion
     }

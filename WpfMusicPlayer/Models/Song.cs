@@ -14,6 +14,11 @@ namespace WpfMusicPlayer.Models
         public int Year { get; set; }
         public byte[]? AlbumArt { get; set; }
 
+        // View counting
+        public int ViewCount { get; set; } = 0;
+        // Runtime flag to avoid double counting during a single playback
+        public bool HasCountedView { get; set; } = false;
+
         public string DisplayText => $"{Artist} - {Title}";
         public string DurationText => Duration.ToString(@"mm\:ss");
 

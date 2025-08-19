@@ -45,6 +45,11 @@ namespace WpfMusicPlayer
             _musicService.PlaybackStateChanged += OnPlaybackStateChanged;
             _musicService.PositionChanged += OnPositionChanged;
             _musicService.QueueChanged += OnQueueChanged;
+            _musicService.SongViewCountChanged += (s, song) =>
+            {
+                // Refresh the UI row for this song when views increment
+                Dispatcher.Invoke(RefreshSongDisplay);
+            };
         }
 
         private void InitializeUI()
@@ -84,7 +89,7 @@ namespace WpfMusicPlayer
 
         private void UpdateColumnWidths()
         {
-            if (SongsListView?.View is GridView gridView && gridView.Columns.Count >= 7)
+            if (SongsListView?.View is GridView gridView && gridView.Columns.Count >= 8)
             {
                 var availableWidth = SongsListView.ActualWidth - 40; // Account for scrollbar and padding
                 
@@ -94,10 +99,11 @@ namespace WpfMusicPlayer
                     var numberWidth = 40;
                     var coverWidth = 80;
                     var durationWidth = 80;
+                    var viewsWidth = 70;
                     var actionsWidth = 150;
                     
                     // Calculate remaining width for flexible columns
-                    var remainingWidth = availableWidth - numberWidth - coverWidth - durationWidth - actionsWidth;
+                    var remainingWidth = availableWidth - numberWidth - coverWidth - durationWidth - viewsWidth - actionsWidth;
                     
                     if (remainingWidth > 300) // Ensure minimum width for text columns
                     {
@@ -113,7 +119,8 @@ namespace WpfMusicPlayer
                         gridView.Columns[3].Width = artistWidth;   // Artist
                         gridView.Columns[4].Width = albumWidth;    // Album
                         gridView.Columns[5].Width = durationWidth; // Duration
-                        gridView.Columns[6].Width = actionsWidth;  // Actions
+                        gridView.Columns[6].Width = viewsWidth;    // Views
+                        gridView.Columns[7].Width = actionsWidth;  // Actions
                     }
                 }
             }
