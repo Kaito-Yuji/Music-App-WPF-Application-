@@ -225,6 +225,20 @@ namespace WpfMusicPlayer
             }
         }
 
+        private void StatisticsButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var statsWindow = new ListeningStatsWindow(_musicService);
+                statsWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening statistics window: {ex.Message}", "Error", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void DeletePlaylistButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.Tag is Playlist playlist)

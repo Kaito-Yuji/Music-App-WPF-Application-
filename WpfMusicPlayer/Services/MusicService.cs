@@ -21,6 +21,7 @@ namespace WpfMusicPlayer.Services
         private readonly string _playlistsFilePath;
         private readonly Random _random = new Random();
         private readonly DispatcherTimer _positionTimer;
+        private readonly ListeningStatsService _listeningStatsService;
         private bool _isLoadingNewSong = false; // Flag to prevent auto-advance when loading new song
         private bool _isSwitchingTrack = false;
 
@@ -47,9 +48,21 @@ namespace WpfMusicPlayer.Services
             {
                 if (_currentSong != value)
                 {
+                    // Stop tracking the previous song
+                    if (_currentSong != null)
+                    {
+                        _listeningStatsService.OnSongStopped();
+                    }
+                    
                     _currentSong = value;
                     OnPropertyChanged();
                     CurrentSongChanged?.Invoke(this, EventArgs.Empty);
+                    
+                    // Start tracking the new song
+                    if (_currentSong != null)
+                    {
+                        _listeningStatsService.OnSongStarted(_currentSong);
+                    }
                 }
             }
         }
@@ -181,6 +194,9 @@ namespace WpfMusicPlayer.Services
         #region Constructor
         public MusicService()
         {
+            // Initialize listening stats service
+            _listeningStatsService = new ListeningStatsService();
+            
             // Initialize playlists file path
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var appFolder = Path.Combine(appDataPath, "WpfMusicPlayer");
@@ -196,6 +212,12 @@ namespace WpfMusicPlayer.Services
             {
                 OnPropertyChanged(nameof(CurrentPosition));
                 PositionChanged?.Invoke(this, EventArgs.Empty);
+                
+                // Track listening progress
+                if (CurrentSong != null)
+                {
+                    _listeningStatsService.OnPositionUpdate(CurrentSong, CurrentPosition, TotalDuration);
+                }
             };
 
             LoadPlaylistsFromFile();
@@ -703,8 +725,8 @@ namespace WpfMusicPlayer.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error playing song '{CurrentSong.Title}': {ex.Message}");
-                MessageBox.Show($"Error playing '{CurrentSong.Title}': {ex.Message}",
+                System.Diagnostics.Debug.WriteLine($"Error playing song '{CurrentSong?.Title ?? "Unknown"}': {ex.Message}");
+                MessageBox.Show($"Error playing '{CurrentSong?.Title ?? "Unknown"}': {ex.Message}",
                     "Playback Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 Stop();
             }
@@ -1026,6 +1048,53 @@ namespace WpfMusicPlayer.Services
         }
         #endregion
 
+        #region Listening Statistics Methods
+        /// <summary>
+        /// Get weekend listening statistics (Saturday and Sunday of current week)
+        /// </summary>
+        public PeriodStatistics GetWeekendStats()
+        {
+            var stats = _listeningStatsService.GetWeekendStats();
+            UpdateStatsWithSongMetadata(stats);
+            return stats;
+        }
+
+        /// <summary>
+        /// Get monthly listening statistics for the current month
+        /// </summary>
+        public PeriodStatistics GetMonthlyStats()
+        {
+            var stats = _listeningStatsService.GetMonthlyStats();
+            UpdateStatsWithSongMetadata(stats);
+            return stats;
+        }
+
+        /// <summary>
+        /// Get all-time listening statistics
+        /// </summary>
+        public PeriodStatistics GetAllTimeStats()
+        {
+            var stats = _listeningStatsService.GetAllTimeStats();
+            UpdateStatsWithSongMetadata(stats);
+            return stats;
+        }
+
+        private void UpdateStatsWithSongMetadata(PeriodStatistics stats)
+        {
+            var songDict = Songs.ToDictionary(s => s.Id, s => s);
+
+            foreach (var songStat in stats.TopSongs)
+            {
+                if (songDict.TryGetValue(songStat.SongId, out var song))
+                {
+                    songStat.SongTitle = song.Title;
+                    songStat.Artist = song.Artist;
+                    songStat.FilePath = song.FilePath;
+                }
+            }
+        }
+        #endregion
+
         #region Event Handlers
         private void OnPlaybackStopped(object? sender, StoppedEventArgs e)
         {
@@ -1063,6 +1132,9 @@ namespace WpfMusicPlayer.Services
         {
             if (!_disposed && disposing)
             {
+                // Stop tracking current song before disposing
+                _listeningStatsService?.OnSongStopped();
+                
                 _positionTimer?.Stop();
                 StopPlayback();
                 _disposed = true;

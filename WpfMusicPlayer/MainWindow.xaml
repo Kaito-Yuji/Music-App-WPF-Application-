@@ -167,6 +167,9 @@
                     <Button x:Name="CreatePlaylistButton" Content="➕ Create Playlist" 
                             Style="{StaticResource ModernButton}" Click="CreatePlaylistButton_Click" Height="31"/>
 
+                    <Button x:Name="StatisticsButton" Content="📊 Listening Statistics" 
+                            Style="{StaticResource ModernButton}" Click="StatisticsButton_Click" Height="31" Margin="5,5,5,5"/>
+
                     <ListBox x:Name="PlaylistsListBox" Background="Transparent" BorderThickness="0"
                              Margin="0,10,0,0" SelectionChanged="PlaylistsListBox_SelectionChanged">
                         <ListBox.ItemTemplate>
