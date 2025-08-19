@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using WpfMusicPlayer.Models;
 
 namespace WpfMusicPlayer
@@ -21,6 +23,12 @@ namespace WpfMusicPlayer
             
             SongsListView.ItemsSource = _filteredSongs;
             SongsListView.SelectionChanged += SongsListView_SelectionChanged;
+
+            // Sort by ViewCount desc, then Title asc
+            var view = CollectionViewSource.GetDefaultView(SongsListView.ItemsSource);
+            view.SortDescriptions.Clear();
+            view.SortDescriptions.Add(new SortDescription(nameof(Song.ViewCount), ListSortDirection.Descending));
+            view.SortDescriptions.Add(new SortDescription(nameof(Song.Title), ListSortDirection.Ascending));
             
             LoadSongs(allSongs);
             InitializeSearch();
