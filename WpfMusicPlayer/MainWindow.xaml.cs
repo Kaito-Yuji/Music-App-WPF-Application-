@@ -45,6 +45,9 @@ namespace WpfMusicPlayer
             _musicService.PlaybackStateChanged += OnPlaybackStateChanged;
             _musicService.PositionChanged += OnPositionChanged;
             _musicService.QueueChanged += OnQueueChanged;
+            
+            // Subscribe to audio separation progress
+            _musicService.AudioSeparationProgress += OnAudioSeparationProgress;
         }
 
         private void InitializeUI()
@@ -190,6 +193,38 @@ namespace WpfMusicPlayer
         private void OnQueueChanged(object? sender, EventArgs e)
         {
             OnPropertyChanged(nameof(_musicService.Queue));
+        }
+
+        private void OnAudioSeparationProgress(object? sender, AudioSeparatorService.ProgressEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (e.IsError)
+                {
+                    // Hide loading and show error
+                    HideProcessingState();
+                    StatusTextBlock.Text = e.Message;
+                    MessageBox.Show(e.Message, "Audio Separator Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                else if (e.IsCompleted)
+                {
+                    // Hide loading and show completion
+                    HideProcessingState();
+                    StatusTextBlock.Text = e.Message;
+                }
+                else
+                {
+                    // Update progress
+                    if (!string.IsNullOrEmpty(e.Message))
+                    {
+                        LoadingText.Text = e.Message;
+                        if (e.Percentage.HasValue)
+                        {
+                            LoadingDetails.Text = $"Progress: {e.Percentage}%";
+                        }
+                    }
+                }
+            });
         }
 
         #endregion
@@ -568,6 +603,254 @@ namespace WpfMusicPlayer
         private void SongsListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
 
+        }
+
+        private async void KaraokeButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Check if there's a current song playing
+                if (_musicService.CurrentSong == null)
+                {
+                    MessageBox.Show("Please select and play a song first before using Karaoke mode.",
+                        "No Song Playing", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                // Check if audio separator is available
+                // if (!_musicService.IsAudioSeparatorAvailable)
+                // {
+                //     MessageBox.Show("Python and audio-separator are not properly installed. Please install them first.",
+                //         "Audio Separator Not Available", MessageBoxButton.OK, MessageBoxImage.Warning);
+                //     return;
+                // }
+
+                bool wasKaraokeMode = _musicService.IsKaraokeMode;
+                
+                // Toggle karaoke mode
+                _musicService.IsKaraokeMode = !_musicService.IsKaraokeMode;
+                
+                // Update button appearance immediately
+                UpdateKaraokeButtonAppearance();
+
+                // If enabling karaoke mode, trigger the audio separation immediately
+                if (_musicService.IsKaraokeMode && !wasKaraokeMode)
+                {
+                    await ProcessKaraokeModeAsync();
+                }
+                else if (!_musicService.IsKaraokeMode && wasKaraokeMode)
+                {
+                    // Switch back to original song
+                    ShowProcessingState("Switching back to original track...", false);
+                    try
+                    {
+                        await _musicService.SwitchToKaraokeModeAsync();
+                        StatusTextBlock.Text = "Karaoke mode deactivated - Original track loaded";
+                    }
+                    finally
+                    {
+                        HideProcessingState();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Reset karaoke mode on error
+                _musicService.IsKaraokeMode = false;
+                UpdateKaraokeButtonAppearance();
+                HideProcessingState();
+                
+                MessageBox.Show($"Error toggling karaoke mode: {ex.Message}", 
+                    "Karaoke Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusTextBlock.Text = "Ready";
+            }
+        }
+
+        private async Task ProcessKaraokeModeAsync()
+        {
+            ShowProcessingState("Initializing audio separation...", true);
+            
+            try
+            {
+                // Disable UI elements to prevent interference
+                SetUIEnabled(false);
+                
+                // The progress will be updated through the AudioSeparationProgress event
+                // Start the separation process immediately
+                await _musicService.SwitchToKaraokeModeAsync();
+
+                // Only update status if successful (error handling is done in progress event)
+                if (_musicService.IsKaraokeMode)
+                {
+                    StatusTextBlock.Text = "Karaoke mode activated - Instrumental track loaded";
+                }
+            }
+            catch (Exception ex)
+            {
+                // If failed, revert the karaoke mode
+                _musicService.IsKaraokeMode = false;
+                UpdateKaraokeButtonAppearance();
+                StatusTextBlock.Text = $"Failed to activate Karaoke mode: {ex.Message}";
+                throw;
+            }
+            finally
+            {
+                SetUIEnabled(true);
+                HideProcessingState();
+            }
+        }
+
+        private void UpdateKaraokeButtonAppearance()
+        {
+            KaraokeButton.Background = _musicService.IsKaraokeMode ? 
+                System.Windows.Media.Brushes.Green : 
+                System.Windows.Media.Brushes.Transparent;
+            
+            KaraokeButton.ToolTip = _musicService.IsKaraokeMode ? 
+                "Exit Karaoke Mode" : 
+                "Karaoke Mode (Instrumental Only)";
+        }
+
+        private void ShowProcessingState(string message, bool showOverlay)
+        {
+            StatusTextBlock.Text = message;
+            ProcessingProgressBar.Visibility = Visibility.Visible;
+            
+            if (showOverlay)
+            {
+                LoadingOverlay.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void HideProcessingState()
+        {
+            ProcessingProgressBar.Visibility = Visibility.Collapsed;
+            LoadingOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private void UpdateLoadingText(string mainText, string detailText)
+        {
+            if (LoadingText != null) LoadingText.Text = mainText;
+            if (LoadingDetails != null) LoadingDetails.Text = detailText;
+        }
+
+        private void SetUIEnabled(bool enabled)
+        {
+            // Disable main controls that could interfere with audio processing
+            SongsListView.IsEnabled = enabled;
+            PlayPauseButton.IsEnabled = enabled;
+            PreviousButton.IsEnabled = enabled;
+            NextButton.IsEnabled = enabled;
+            ShuffleButton.IsEnabled = enabled;
+            RepeatButton.IsEnabled = enabled;
+            
+            // Keep volume and position controls enabled, but disable karaoke button
+            KaraokeButton.IsEnabled = enabled;
+            
+            // Keep search enabled as it doesn't affect playback
+        }
+
+        private string GetAudioSeparatorDebugInfo()
+        {
+            try
+            {
+                // Get debug info from the service
+                return _musicService.GetAudioSeparatorSetupInfo();
+            }
+            catch (Exception ex)
+            {
+                return $"Unable to get debug information: {ex.Message}";
+            }
+        }
+
+        private async void ExportButton_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedSong = SongsListView.SelectedItem as Song;
+            if (selectedSong == null)
+            {
+                MessageBox.Show("Please select a song to export.", 
+                    "No Song Selected", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Check if audio separator is available
+            if (!_musicService.IsAudioSeparatorAvailable)
+            {
+                MessageBox.Show(
+                    "Audio Separator is not available. This feature requires Python and the audio-separator library to be installed.\n\n" +
+                    "Please install Python 3.8+ and run: pip install audio-separator",
+                    "Audio Separator Not Available", 
+                    MessageBoxButton.OK, 
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                // Show export options dialog
+                var exportDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Title = "Export Stems",
+                    Filter = "WAV files (*.wav)|*.wav",
+                    DefaultExt = "wav"
+                };
+
+                // Create export options window
+                var exportOptions = MessageBox.Show(
+                    "What would you like to export?\n\nYes = Instrumental (Karaoke version)\nNo = Vocals only\nCancel = Both",
+                    "Export Options",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question);
+
+                if (exportOptions == MessageBoxResult.Cancel)
+                {
+                    return;
+                }
+
+                if (exportOptions == MessageBoxResult.Yes)
+                {
+                    // Export instrumental
+                    exportDialog.FileName = $"{selectedSong.Title} - Instrumental.wav";
+                    if (exportDialog.ShowDialog() == true)
+                    {
+                        var success = await _musicService.ExportInstrumentalAsync(selectedSong, exportDialog.FileName);
+                        if (success)
+                        {
+                            MessageBox.Show("Instrumental exported successfully!", 
+                                "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            MessageBox.Show("Failed to export instrumental.", 
+                                "Export Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
+                    }
+                }
+                else if (exportOptions == MessageBoxResult.No)
+                {
+                    // Export vocals
+                    exportDialog.FileName = $"{selectedSong.Title} - Vocals.wav";
+                    if (exportDialog.ShowDialog() == true)
+                    {
+                        var success = await _musicService.ExportVocalsAsync(selectedSong, exportDialog.FileName);
+                        if (success)
+                        {
+                            MessageBox.Show("Vocals exported successfully!", 
+                                "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            MessageBox.Show("Failed to export vocals.", 
+                                "Export Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error during export: {ex.Message}", 
+                    "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

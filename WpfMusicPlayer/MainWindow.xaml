@@ -214,8 +214,15 @@
                                  Padding="10" FontSize="14" 
                                  TextChanged="SearchTextBox_TextChanged"
                                  Text="Search songs, artists, albums..."/>
-                        <TextBlock Grid.Column="1" x:Name="StatusTextBlock" 
-                                   Foreground="Gray" VerticalAlignment="Center" Margin="10,0"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0">
+                            <ProgressBar x:Name="ProcessingProgressBar" 
+                                       Width="100" Height="8" 
+                                       Visibility="Collapsed"
+                                       IsIndeterminate="True"
+                                       Margin="0,0,10,0"/>
+                            <TextBlock x:Name="StatusTextBlock" 
+                                     Foreground="Gray" VerticalAlignment="Center"/>
+                        </StackPanel>
                     </Grid>
                 </Border>
 
@@ -419,6 +426,8 @@
                 <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center">
                     <!-- Control Buttons -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10" Height="70">
+                        <Button x:Name="KaraokeButton" Content="🎤" ToolTip="Karaoke Mode (Instrumental Only)"
+                                Style="{StaticResource ModernButton}" Click="KaraokeButton_Click" Width="22"/>
                         <Button x:Name="ShuffleButton" Content="{Binding IsShuffleOn, Converter={StaticResource ShuffleToStringConverter}, Mode=OneWay}" 
                                 Style="{StaticResource ModernButton}" Click="ShuffleButton_Click"/>
                         <Button x:Name="PreviousButton" Content="⏮️" 
@@ -429,6 +438,8 @@
                                 Style="{StaticResource ModernButton}" Click="NextButton_Click"/>
                         <Button x:Name="RepeatButton" Content="{Binding RepeatMode, Converter={StaticResource RepeatModeToStringConverter}, Mode=OneWay}" 
                                 Style="{StaticResource ModernButton}" Click="RepeatButton_Click"/>
+                        <Button x:Name="ExportButton" Content="💾" ToolTip="Export Stems"
+                                Style="{StaticResource ModernButton}" Click="ExportButton_Click"/>
                     </StackPanel>
 
                     <!-- Progress Bar -->
@@ -465,5 +476,26 @@
                 </StackPanel>
             </Grid>
         </Border>
+
+        <!-- Loading Overlay for Audio Processing -->
+        <Grid x:Name="LoadingOverlay" Background="#80000000" Visibility="Collapsed" Panel.ZIndex="1000">
+            <Border Background="#2d2d30" CornerRadius="10" Padding="30" 
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    BorderBrush="#404040" BorderThickness="1">
+                <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                    <TextBlock x:Name="LoadingText" Text="Processing Audio..." 
+                             Foreground="White" FontSize="16" FontWeight="Bold"
+                             HorizontalAlignment="Center" Margin="0,0,0,15"/>
+                    <ProgressBar Width="250" Height="8" IsIndeterminate="True" 
+                               Style="{StaticResource {x:Type ProgressBar}}" Margin="0,0,0,15"/>
+                    <TextBlock x:Name="LoadingDetails" Text="Separating vocals and instruments... This may take 5-30 minutes depending on song length."
+                             Foreground="Gray" FontSize="12" TextWrapping="Wrap"
+                             HorizontalAlignment="Center" MaxWidth="300" TextAlignment="Center"/>
+                    <TextBlock Text="Please do not close the application or change songs."
+                             Foreground="Orange" FontSize="11" FontStyle="Italic"
+                             HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

@@ -1,0 +1,2 @@
+# Test file for Spleeter
+This is a test file to verify that the application can read files correctly.
