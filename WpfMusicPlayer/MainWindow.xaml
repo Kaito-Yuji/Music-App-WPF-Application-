@@ -7,12 +7,15 @@
         xmlns:converters="clr-namespace:WpfMusicPlayer.Converters"
         mc:Ignorable="d"
         Title="Offline Spotify Clone" Height="700" Width="1200"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen" WindowStyle="None" >
 
     <Window.Resources>
         <converters:ByteArrayToImageConverter x:Key="ByteArrayToImageConverter"/>
         <converters:TimeSpanToSecondsConverter x:Key="TimeSpanToSecondsConverter"/>
         <converters:PlayModeToStringConverter x:Key="PlayModeToStringConverter"/>
+        <converters:ShuffleToStringConverter x:Key="ShuffleToStringConverter"/>
+        <converters:RepeatModeToStringConverter x:Key="RepeatModeToStringConverter"/>
+        <converters:ListViewItemIndexConverter x:Key="ListViewItemIndexConverter"/>
 
         <Style x:Key="ModernButton" TargetType="Button">
             <Setter Property="Background" Value="#2d2d30"/>
@@ -102,6 +105,39 @@
         <ControlTemplate x:Key="SliderThumbTemplate" TargetType="Thumb">
             <Ellipse Fill="#1db954" Width="12" Height="12"/>
         </ControlTemplate>
+
+        <Style x:Key="GridViewColumnHeaderStyle" TargetType="GridViewColumnHeader">
+            <Setter Property="Background" Value="#2d2d30"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#404040"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GridViewColumnHeader">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                            Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#404040"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#1e1e1e"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid Background="#121212">
@@ -124,12 +160,12 @@
                     <TextBlock Text="Your Library" Foreground="White" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>
 
                     <Button x:Name="ScanMusicButton" Content="📁 Scan Music Folder" 
-                            Style="{StaticResource ModernButton}" Click="ScanMusicButton_Click"/>
+                            Style="{StaticResource ModernButton}" Click="ScanMusicButton_Click" Height="28"/>
 
                     <TextBlock Text="Playlists" Foreground="White" FontSize="14" FontWeight="Bold" Margin="0,20,0,10"/>
 
                     <Button x:Name="CreatePlaylistButton" Content="➕ Create Playlist" 
-                            Style="{StaticResource ModernButton}" Click="CreatePlaylistButton_Click"/>
+                            Style="{StaticResource ModernButton}" Click="CreatePlaylistButton_Click" Height="31"/>
 
                     <ListBox x:Name="PlaylistsListBox" Background="Transparent" BorderThickness="0"
                              Margin="0,10,0,0" SelectionChanged="PlaylistsListBox_SelectionChanged">
@@ -183,27 +219,58 @@
                 <!-- Songs List -->
                 <ListView x:Name="SongsListView" Grid.Row="1" 
                           Background="Transparent" Foreground="White"
-                          Margin="10,0,10,10" MouseDoubleClick="SongsListView_MouseDoubleClick" SelectionChanged="SongsListView_SelectionChanged">
+                          Margin="10,0,10,10" MouseDoubleClick="SongsListView_MouseDoubleClick" SelectionChanged="SongsListView_SelectionChanged"
+                          BorderThickness="0">
                     <ListView.View>
-                        <GridView>
-                            <GridViewColumn Header="Title" Width="200">
+                        <GridView ColumnHeaderContainerStyle="{StaticResource GridViewColumnHeaderStyle}">
+                            <GridViewColumn Header="#" Width="40">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Title}" Foreground="White"/>
+                                        <TextBlock Text="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType=ListViewItem, AncestorLevel=1}, 
+                                                         Converter={StaticResource ListViewItemIndexConverter}}" 
+                                                   Foreground="Gray" HorizontalAlignment="Center"/>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
-                            <GridViewColumn Header="Artist" Width="150">
+                            <GridViewColumn Header="Cover" Width="80">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Artist}" Foreground="Gray"/>
+                                        <Border Width="60" Height="60" Background="#2d2d30" CornerRadius="3">
+                                            <Image Source="{Binding AlbumArt, Converter={StaticResource ByteArrayToImageConverter}}"
+                                                   Stretch="UniformToFill"
+                                                   Width="60" Height="60">
+                                                <Image.Style>
+                                                    <Style TargetType="Image">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding AlbumArt}" Value="{x:Null}">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Image.Style>
+                                            </Image>
+                                        </Border>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
-                            <GridViewColumn Header="Album" Width="150">
+                            <GridViewColumn Header="Title">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Album}" Foreground="Gray"/>
+                                        <TextBlock Text="{Binding Title}" Foreground="White" TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Artist">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Artist}" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Album">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Album}" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
@@ -214,14 +281,22 @@
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
-                            <GridViewColumn Header="Actions" Width="100">
+                            <GridViewColumn Header="Actions" Width="150">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="➕" Style="{StaticResource ModernButton}"
-                                                Width="30" Height="25" Padding="0"
-                                                Click="AddToPlaylistButton_Click"
-                                                Tag="{Binding}"
-                                                ToolTip="Add to Playlist"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="➕" Style="{StaticResource ModernButton}"
+                                                    Width="30" Height="25" Padding="0"
+                                                    Click="AddToPlaylistButton_Click"
+                                                    Tag="{Binding}"
+                                                    ToolTip="Add to Playlist"
+                                                    Margin="0,0,5,0"/>
+                                            <Button Content="✏️" Style="{StaticResource ModernButton}"
+                                                    Width="30" Height="25" Padding="0"
+                                                    Click="EditSongButton_Click"
+                                                    Tag="{Binding}"
+                                                    ToolTip="Edit Song"/>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
@@ -341,7 +416,7 @@
                 <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center">
                     <!-- Control Buttons -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10" Height="70">
-                        <Button x:Name="ShuffleButton" Content="{Binding PlayMode, Converter={StaticResource PlayModeToStringConverter}, Mode=OneWay}" 
+                        <Button x:Name="ShuffleButton" Content="{Binding IsShuffleOn, Converter={StaticResource ShuffleToStringConverter}, Mode=OneWay}" 
                                 Style="{StaticResource ModernButton}" Click="ShuffleButton_Click"/>
                         <Button x:Name="PreviousButton" Content="⏮️" 
                                 Style="{StaticResource ModernButton}" Click="PreviousButton_Click"/>
@@ -349,8 +424,8 @@
                                 Style="{StaticResource PlayButton}" Click="PlayPauseButton_Click"/>
                         <Button x:Name="NextButton" Content="⏭️" 
                                 Style="{StaticResource ModernButton}" Click="NextButton_Click"/>
-                        <Button x:Name="StopButton" Content="⏹️" 
-                                Style="{StaticResource ModernButton}" Click="StopButton_Click"/>
+                        <Button x:Name="RepeatButton" Content="{Binding RepeatMode, Converter={StaticResource RepeatModeToStringConverter}, Mode=OneWay}" 
+                                Style="{StaticResource ModernButton}" Click="RepeatButton_Click"/>
                     </StackPanel>
 
                     <!-- Progress Bar -->
@@ -358,7 +433,8 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="5"/>
                             <ColumnDefinition Width="27.01"/>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="149*"/>
+                            <ColumnDefinition Width="19*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
@@ -371,9 +447,9 @@
                                 Value="{Binding CurrentPosition, Converter={StaticResource TimeSpanToSecondsConverter}, Mode=OneWay}"
                                 Style="{StaticResource SliderStyle}"
                                 PreviewMouseLeftButtonDown="ProgressSlider_PreviewMouseLeftButtonDown"
-                                PreviewMouseLeftButtonUp="ProgressSlider_PreviewMouseLeftButtonUp" Grid.ColumnSpan="3" Margin="27,-20,32,0" Grid.Column="1"/>
+                                PreviewMouseLeftButtonUp="ProgressSlider_PreviewMouseLeftButtonUp" Grid.ColumnSpan="4" Margin="27,-20,32,0" Grid.Column="1" ValueChanged="ProgressSlider_ValueChanged"/>
 
-                        <TextBlock Grid.Column="3" x:Name="TotalTimeText" Text="0:00" 
+                        <TextBlock Grid.Column="4" x:Name="TotalTimeText" Text="0:00" 
                                    Foreground="Gray" FontSize="12" VerticalAlignment="Top" Margin="10,-19,0,0" Height="15"/>
                     </Grid>
                 </StackPanel>

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:WpfMusicPlayer.Converters"
         Title="Playlist Details" Height="700" Width="1000"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner" WindowStyle="None">
 
     <Window.Resources>
         <converters:ByteArrayToImageConverter x:Key="ByteArrayToImageConverter"/>

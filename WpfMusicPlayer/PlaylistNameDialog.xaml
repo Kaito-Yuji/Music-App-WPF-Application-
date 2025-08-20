@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Create Playlist" Height="700" Width="450"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize">
+        ResizeMode="NoResize" WindowStyle="None">
     <Grid Background="#121212" Margin="0,0,0,-1">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
