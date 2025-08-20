@@ -60,7 +60,7 @@ namespace WpfMusicPlayer
 
         private void UpdateColumnWidths()
         {
-            if (PlaylistSongsListView?.View is GridView gridView && gridView.Columns.Count >= 7)
+            if (PlaylistSongsListView?.View is GridView gridView && gridView.Columns.Count >= 8)
             {
                 var availableWidth = PlaylistSongsListView.ActualWidth - 40; // Account for scrollbar and padding
                 
@@ -70,10 +70,11 @@ namespace WpfMusicPlayer
                     var numberWidth = 40;
                     var coverWidth = 80;
                     var durationWidth = 80;
+                    var viewsWidth = 70;
                     var actionsWidth = 80;
                     
                     // Calculate remaining width for flexible columns
-                    var remainingWidth = availableWidth - numberWidth - coverWidth - durationWidth - actionsWidth;
+                    var remainingWidth = availableWidth - numberWidth - coverWidth - durationWidth - viewsWidth - actionsWidth;
                     
                     if (remainingWidth > 300) // Ensure minimum width for text columns
                     {
@@ -88,8 +89,9 @@ namespace WpfMusicPlayer
                         gridView.Columns[2].Width = titleWidth;   // Title
                         gridView.Columns[3].Width = artistWidth;  // Artist
                         gridView.Columns[4].Width = albumWidth;   // Album
-                        gridView.Columns[5].Width = durationWidth; // Duration
-                        gridView.Columns[6].Width = actionsWidth; // Actions
+                        gridView.Columns[5].Width = viewsWidth;   // Views
+                        gridView.Columns[6].Width = durationWidth; // Duration
+                        gridView.Columns[7].Width = actionsWidth; // Actions
                     }
                 }
             }
