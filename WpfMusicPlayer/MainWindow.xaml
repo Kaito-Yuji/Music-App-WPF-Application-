@@ -7,7 +7,7 @@
         xmlns:converters="clr-namespace:WpfMusicPlayer.Converters"
         mc:Ignorable="d"
         Title="Offline Spotify Clone" Height="700" Width="1200"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen" WindowStyle="None" >
 
     <Window.Resources>
         <converters:ByteArrayToImageConverter x:Key="ByteArrayToImageConverter"/>
