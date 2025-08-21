@@ -656,12 +656,8 @@ namespace WpfMusicPlayer
                     return;
                 }
 
-                // Check if stems already exist (if so, switch immediately)
-                if (_musicService.CheckIfStemsExist(_musicService.CurrentSong.FilePath))
-                {
-                    await SwitchToInstrumentalTrack();
-                    return;
-                }
+                // Always perform separation when karaoke button is pressed
+                // Remove the check for existing stems so it always separates
 
                 _isProcessingKaraoke = true;
                 _lastSeparationAttempt = DateTime.Now;

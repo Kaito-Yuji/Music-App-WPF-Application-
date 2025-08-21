@@ -54,11 +54,11 @@ namespace WpfMusicPlayer.Services
                     {
                         _listeningStatsService.OnSongStopped();
                     }
-                    
+
                     _currentSong = value;
                     OnPropertyChanged();
                     CurrentSongChanged?.Invoke(this, EventArgs.Empty);
-                    
+
                     // Start tracking the new song
                     if (_currentSong != null)
                     {
@@ -182,43 +182,20 @@ namespace WpfMusicPlayer.Services
             }
         }
 
-        // Karaoke mode properties
-        private bool _isKaraokeMode = false;
-        public bool IsKaraokeMode
-        {
-            get => _isKaraokeMode;
-            set
-            {
-                if (_isKaraokeMode != value)
-                {
-                    _isKaraokeMode = value;
-                    OnPropertyChanged();
-                    
-                    // Switch to karaoke mode if a song is currently playing
-                    if (CurrentSong != null)
-                    {
-                        _ = SwitchToKaraokeModeAsync();
-                    }
-                }
-            }
-        }
-
-        private string? _currentKaraokeFilePath;
-        
-        /// <summary>
-        /// Gets whether the audio separator is available and ready to use
-        /// </summary>
+        // Karaoke mode properties - simplified for one-time use
+        private string? _currentKaraokeFilePath;        /// <summary>
+                                                        /// Gets whether the audio separator is available and ready to use
+                                                        /// </summary>
         public bool IsAudioSeparatorAvailable => _audioSeparatorService.IsAvailable;
 
         /// <summary>
-        /// Checks if separated stems already exist for a given audio file
+        /// Checks if separated stems already exist for a given audio file in test_fixed directory
         /// </summary>
         /// <param name="inputFilePath">Original audio file path</param>
-        /// <param name="outputDirectory">Output directory to check</param>
         /// <returns>True if both stems exist, false otherwise</returns>
-        public bool CheckIfStemsExist(string inputFilePath, string outputDirectory)
+        public bool CheckIfStemsExist(string inputFilePath)
         {
-            return _audioSeparatorService.StemsExist(inputFilePath, outputDirectory);
+            return _audioSeparatorService.StemsExistTestFixed(inputFilePath);
         }
 
         /// <summary>
@@ -228,6 +205,25 @@ namespace WpfMusicPlayer.Services
         public string GetAudioSeparatorSetupInfo()
         {
             return _audioSeparatorService.GetSetupInfo();
+        }
+
+        /// <summary>
+        /// Gets the separated file paths for a given input file using test_fixed method
+        /// </summary>
+        /// <param name="inputFilePath">Original audio file path</param>
+        /// <returns>Tuple containing paths to vocals and accompaniment files</returns>
+        public (string vocalsPath, string accompanimentPath) GetSeparatedFilePaths(string inputFilePath)
+        {
+            return _audioSeparatorService.GetSeparatedFilePathsTestFixed(inputFilePath);
+        }
+
+        /// <summary>
+        /// Loads an audio file for playback
+        /// </summary>
+        /// <param name="filePath">Path to the audio file</param>
+        public void LoadAudioFile(string filePath)
+        {
+            LoadFile(filePath);
         }
         #endregion
 
@@ -246,16 +242,16 @@ namespace WpfMusicPlayer.Services
         {
             // Initialize listening stats service
             _listeningStatsService = new ListeningStatsService();
-            
+
             // Initialize audio separator service
             _audioSeparatorService = new AudioSeparatorService();
-            
+
             // Subscribe to audio separator progress events
             _audioSeparatorService.ProgressChanged += (sender, args) =>
             {
                 AudioSeparationProgress?.Invoke(this, args);
             };
-            
+
             // Initialize playlists file path
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var appFolder = Path.Combine(appDataPath, "WpfMusicPlayer");
@@ -271,7 +267,7 @@ namespace WpfMusicPlayer.Services
             {
                 OnPropertyChanged(nameof(CurrentPosition));
                 PositionChanged?.Invoke(this, EventArgs.Empty);
-                
+
                 // Track listening progress
                 if (CurrentSong != null)
                 {
@@ -378,7 +374,7 @@ namespace WpfMusicPlayer.Services
             {
                 // Update the song metadata in the file using TagLib
                 using var file = TagLib.File.Create(song.FilePath);
-                
+
                 // Update basic metadata
                 file.Tag.Title = song.Title;
                 file.Tag.Performers = new[] { song.Artist };
@@ -416,8 +412,8 @@ namespace WpfMusicPlayer.Services
         #region Playlist Methods
         public Playlist CreatePlaylist(string name, string description = "", byte[]? coverImage = null)
         {
-            var playlist = new Playlist 
-            { 
+            var playlist = new Playlist
+            {
                 Name = name,
                 Description = description,
                 CoverImage = coverImage
@@ -488,11 +484,11 @@ namespace WpfMusicPlayer.Services
                     }).ToList()
                 }).ToList();
 
-                var json = JsonSerializer.Serialize(playlistData, new JsonSerializerOptions 
-                { 
-                    WriteIndented = true 
+                var json = JsonSerializer.Serialize(playlistData, new JsonSerializerOptions
+                {
+                    WriteIndented = true
                 });
-                
+
                 System.IO.File.WriteAllText(_playlistsFilePath, json);
             }
             catch (Exception ex)
@@ -525,7 +521,7 @@ namespace WpfMusicPlayer.Services
                         CreatedDate = playlistElement.GetProperty("CreatedDate").GetDateTime()
                     };
 
-                    if (playlistElement.TryGetProperty("CoverImage", out var coverImageElement) && 
+                    if (playlistElement.TryGetProperty("CoverImage", out var coverImageElement) &&
                         coverImageElement.ValueKind != JsonValueKind.Null)
                     {
                         var base64String = coverImageElement.GetString();
@@ -541,16 +537,16 @@ namespace WpfMusicPlayer.Services
                         {
                             var songId = songElement.GetProperty("Id").GetString() ?? "";
                             var filePath = songElement.GetProperty("FilePath").GetString() ?? "";
-                            
+
                             // First try to find the song in the existing Songs collection by ID
                             var existingSong = Songs.FirstOrDefault(s => s.Id == songId);
-                            
+
                             // If not found by ID, try to find by file path
                             if (existingSong == null && !string.IsNullOrEmpty(filePath))
                             {
                                 existingSong = Songs.FirstOrDefault(s => s.FilePath == filePath);
                             }
-                            
+
                             if (existingSong != null && System.IO.File.Exists(existingSong.FilePath))
                             {
                                 // Use the existing song object to maintain reference
@@ -572,7 +568,7 @@ namespace WpfMusicPlayer.Services
                                     Duration = TimeSpan.FromSeconds(songElement.GetProperty("Duration").GetDouble())
                                 };
 
-                                if (songElement.TryGetProperty("AlbumArt", out var albumArtElement) && 
+                                if (songElement.TryGetProperty("AlbumArt", out var albumArtElement) &&
                                     albumArtElement.ValueKind != JsonValueKind.Null)
                                 {
                                     var base64String = albumArtElement.GetString();
@@ -610,7 +606,7 @@ namespace WpfMusicPlayer.Services
                 {
                     // Try to find the corresponding song in our main Songs collection
                     var existingSong = Songs.FirstOrDefault(s => s.Equals(playlistSong));
-                    
+
                     if (existingSong != null)
                     {
                         // Use the existing song object to maintain reference
@@ -639,14 +635,14 @@ namespace WpfMusicPlayer.Services
         {
             _isLoadingNewSong = true; // Set flag to prevent auto-advance
             StopPlayback();
-            
+
             try
             {
                 _audioFileReader = new AudioFileReader(filePath);
                 _wavePlayer = new WaveOutEvent();
                 _wavePlayer.Init(_audioFileReader);
                 _wavePlayer.PlaybackStopped += OnPlaybackStopped;
-                
+
                 // Explicitly reset position and notify UI
                 OnPropertyChanged(nameof(CurrentPosition));
                 OnPropertyChanged(nameof(TotalDuration));
@@ -1155,45 +1151,36 @@ namespace WpfMusicPlayer.Services
         #endregion
 
         #region Audio Separator/Karaoke Methods
-        
+
         /// <summary>
-        /// Switches the current song to karaoke mode (instrumental only)
+        /// Switches the current song to karaoke mode (instrumental only) using test_fixed method
         /// </summary>
-        public async Task SwitchToKaraokeModeAsync()
+        public async Task<bool> SwitchToKaraokeModeAsync()
         {
-            if (CurrentSong == null) return;
+            if (CurrentSong == null) return false;
 
             try
             {
-                var stemsCacheDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "WpfMusicPlayer", "SeparatedStems");
-
-                // Check if stems already exist
-                if (!_audioSeparatorService.StemsExist(CurrentSong.FilePath, stemsCacheDir))
+                // Always separate the audio - don't check for existing stems
+                // This ensures fresh separation every time the karaoke button is pressed
+                bool success = await _audioSeparatorService.SeparateAudioAsync(CurrentSong.FilePath);
+                if (!success)
                 {
-                    // Separate the audio using the progress-enabled service
-                    bool success = await _audioSeparatorService.SeparateAudioAsync(CurrentSong.FilePath, stemsCacheDir);
-                    if (!success)
-                    {
-                        return; // Error reporting is handled by the progress events
-                    }
+                    return false; // Error reporting is handled by the progress events
                 }
 
-                // Get the separated file paths
-                var (vocalsPath, accompanimentPath) = _audioSeparatorService.GetSeparatedFilePaths(CurrentSong.FilePath, stemsCacheDir);
+                // Get the separated file paths from test_fixed directory
+                var (vocalsPath, accompanimentPath) = _audioSeparatorService.GetSeparatedFilePathsTestFixed(CurrentSong.FilePath);
 
-                // Switch to the appropriate track based on karaoke mode
-                string targetPath = IsKaraokeMode ? accompanimentPath : CurrentSong.FilePath;
-                
-                if (System.IO.File.Exists(targetPath))
+                // Load the instrumental track
+                if (System.IO.File.Exists(accompanimentPath))
                 {
                     var currentPosition = CurrentPosition;
                     var wasPlaying = PlaybackState == Models.PlaybackState.Playing;
 
-                    // Load the new audio file
-                    LoadFile(targetPath);
-                    _currentKaraokeFilePath = IsKaraokeMode ? targetPath : null;
+                    // Load the instrumental audio file
+                    LoadFile(accompanimentPath);
+                    _currentKaraokeFilePath = accompanimentPath;
 
                     // Restore position and playback state
                     CurrentPosition = currentPosition;
@@ -1201,6 +1188,19 @@ namespace WpfMusicPlayer.Services
                     {
                         Play();
                     }
+
+                    return true;
+                }
+                else
+                {
+                    // Report error through progress event
+                    AudioSeparationProgress?.Invoke(this, new AudioSeparatorService.ProgressEventArgs
+                    {
+                        Message = $"Instrumental file not found: {accompanimentPath}",
+                        IsCompleted = true,
+                        IsError = true
+                    });
+                    return false;
                 }
             }
             catch (Exception ex)
@@ -1212,11 +1212,12 @@ namespace WpfMusicPlayer.Services
                     IsCompleted = true,
                     IsError = true
                 });
+                return false;
             }
         }
 
         /// <summary>
-        /// Exports the instrumental version of a song
+        /// Exports the instrumental version of a song using test_fixed method
         /// </summary>
         /// <param name="song">The song to export</param>
         /// <param name="outputPath">Where to save the instrumental file</param>
@@ -1224,23 +1225,19 @@ namespace WpfMusicPlayer.Services
         {
             try
             {
-                var stemsCacheDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "WpfMusicPlayer", "SeparatedStems");
-
-                // Check if stems already exist
-                if (!_audioSeparatorService.StemsExist(song.FilePath, stemsCacheDir))
+                // Check if stems already exist in test_fixed directory
+                if (!_audioSeparatorService.StemsExistTestFixed(song.FilePath))
                 {
-                    // Separate the audio
-                    bool success = await _audioSeparatorService.SeparateAudioAsync(song.FilePath, stemsCacheDir);
+                    // Separate the audio using test_fixed method
+                    bool success = await _audioSeparatorService.SeparateAudioAsync(song.FilePath);
                     if (!success)
                     {
                         return false;
                     }
                 }
 
-                // Get the separated file paths
-                var (vocalsPath, accompanimentPath) = _audioSeparatorService.GetSeparatedFilePaths(song.FilePath, stemsCacheDir);
+                // Get the separated file paths from test_fixed directory
+                var (vocalsPath, accompanimentPath) = _audioSeparatorService.GetSeparatedFilePathsTestFixed(song.FilePath);
 
                 // Copy the accompaniment (instrumental) file to the output path
                 if (System.IO.File.Exists(accompanimentPath))
@@ -1253,14 +1250,14 @@ namespace WpfMusicPlayer.Services
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error exporting instrumental: {ex.Message}", 
+                MessageBox.Show($"Error exporting instrumental: {ex.Message}",
                     "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
 
         /// <summary>
-        /// Exports the vocals-only version of a song
+        /// Exports the vocals-only version of a song using test_fixed method
         /// </summary>
         /// <param name="song">The song to export</param>
         /// <param name="outputPath">Where to save the vocals file</param>
@@ -1268,23 +1265,19 @@ namespace WpfMusicPlayer.Services
         {
             try
             {
-                var stemsCacheDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "WpfMusicPlayer", "SeparatedStems");
-
-                // Check if stems already exist
-                if (!_audioSeparatorService.StemsExist(song.FilePath, stemsCacheDir))
+                // Check if stems already exist in test_fixed directory
+                if (!_audioSeparatorService.StemsExistTestFixed(song.FilePath))
                 {
-                    // Separate the audio
-                    bool success = await _audioSeparatorService.SeparateAudioAsync(song.FilePath, stemsCacheDir);
+                    // Separate the audio using test_fixed method
+                    bool success = await _audioSeparatorService.SeparateAudioAsync(song.FilePath);
                     if (!success)
                     {
                         return false;
                     }
                 }
 
-                // Get the separated file paths
-                var (vocalsPath, accompanimentPath) = _audioSeparatorService.GetSeparatedFilePaths(song.FilePath, stemsCacheDir);
+                // Get the separated file paths from test_fixed directory
+                var (vocalsPath, accompanimentPath) = _audioSeparatorService.GetSeparatedFilePathsTestFixed(song.FilePath);
 
                 // Copy the vocals file to the output path
                 if (System.IO.File.Exists(vocalsPath))
@@ -1297,27 +1290,23 @@ namespace WpfMusicPlayer.Services
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error exporting vocals: {ex.Message}", 
+                MessageBox.Show($"Error exporting vocals: {ex.Message}",
                     "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
 
         /// <summary>
-        /// Pre-processes songs for faster karaoke switching by separating them in advance
+        /// Pre-processes songs for faster karaoke switching by separating them in advance using test_fixed method
         /// </summary>
         /// <param name="songs">Songs to pre-process</param>
         public async Task PreprocessSongsForKaraokeAsync(IEnumerable<Song> songs)
         {
-            var stemsCacheDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "WpfMusicPlayer", "SeparatedStems");
-
             foreach (var song in songs)
             {
-                if (!_audioSeparatorService.StemsExist(song.FilePath, stemsCacheDir))
+                if (!_audioSeparatorService.StemsExistTestFixed(song.FilePath))
                 {
-                    await _audioSeparatorService.SeparateAudioAsync(song.FilePath, stemsCacheDir);
+                    await _audioSeparatorService.SeparateAudioAsync(song.FilePath);
                 }
             }
         }
@@ -1363,7 +1352,7 @@ namespace WpfMusicPlayer.Services
             {
                 // Stop tracking current song before disposing
                 _listeningStatsService?.OnSongStopped();
-                
+
                 _positionTimer?.Stop();
                 StopPlayback();
                 _disposed = true;
