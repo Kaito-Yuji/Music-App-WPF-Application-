@@ -19,6 +19,9 @@ namespace WpfMusicPlayer
         private readonly MusicService _musicService;
         private DispatcherTimer? _uiUpdateTimer;
         private bool _isDraggingSlider = false;
+        private bool _isProcessingKaraoke = false;
+        private DateTime _lastSeparationAttempt = DateTime.MinValue;
+        private const int SEPARATION_COOLDOWN_SECONDS = 5; // Prevent multiple attempts within 5 seconds // Flag to prevent multiple concurrent separations
 
         public ObservableCollection<Song> DisplayedSongs { get; } = new ObservableCollection<Song>();
 
@@ -45,9 +48,6 @@ namespace WpfMusicPlayer
             _musicService.PlaybackStateChanged += OnPlaybackStateChanged;
             _musicService.PositionChanged += OnPositionChanged;
             _musicService.QueueChanged += OnQueueChanged;
-            
-            // Subscribe to audio separation progress
-            _musicService.AudioSeparationProgress += OnAudioSeparationProgress;
         }
 
         private void InitializeUI()
@@ -204,24 +204,45 @@ namespace WpfMusicPlayer
                     // Hide loading and show error
                     HideProcessingState();
                     StatusTextBlock.Text = e.Message;
+                    
+                    // Reset processing flag BEFORE showing MessageBox
+                    // to prevent multiple attempts when user clicks OK
+                    UpdateKaraokeButtonAppearance();
+                    _isProcessingKaraoke = false;
+                    
+                    // Show error message after resetting states
                     MessageBox.Show(e.Message, "Audio Separator Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    
+                    // Force a longer cooldown after an error to prevent rapid retry attempts
+                    _lastSeparationAttempt = DateTime.Now.AddSeconds(10);
                 }
                 else if (e.IsCompleted)
                 {
                     // Hide loading and show completion
                     HideProcessingState();
                     StatusTextBlock.Text = e.Message;
+                    
+                    // Reset processing flag on completion
+                    _isProcessingKaraoke = false;
                 }
                 else
                 {
                     // Update progress
                     if (!string.IsNullOrEmpty(e.Message))
                     {
-                        LoadingText.Text = e.Message;
+                        UpdateLoadingText(e.Message, 
+                            e.Percentage.HasValue ? 
+                                $"Progress: {e.Percentage}% - This process may take 5-30 minutes depending on song length." :
+                                "Separating vocals and instruments... This may take 5-30 minutes depending on song length.");
+                        
+                        // Update progress bar if percentage is available
                         if (e.Percentage.HasValue)
                         {
-                            LoadingDetails.Text = $"Progress: {e.Percentage}%";
+                            UpdateLoadingProgress(e.Percentage.Value);
                         }
+                        
+                        // Also update the status bar
+                        StatusTextBlock.Text = e.Message;
                     }
                 }
             });
@@ -607,6 +628,24 @@ namespace WpfMusicPlayer
 
         private async void KaraokeButton_Click(object sender, RoutedEventArgs e)
         {
+            // Prevent multiple concurrent karaoke operations
+            if (_isProcessingKaraoke)
+            {
+                MessageBox.Show("Audio separation is already in progress. Please wait for it to complete.",
+                    "Operation In Progress", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Prevent rapid-fire separation attempts
+            var timeSinceLastAttempt = DateTime.Now - _lastSeparationAttempt;
+            if (timeSinceLastAttempt.TotalSeconds < SEPARATION_COOLDOWN_SECONDS)
+            {
+                var remainingSeconds = SEPARATION_COOLDOWN_SECONDS - (int)timeSinceLastAttempt.TotalSeconds;
+                MessageBox.Show($"Please wait {remainingSeconds} more seconds before attempting separation again.",
+                    "Cooldown Period", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             try
             {
                 // Check if there's a current song playing
@@ -617,52 +656,92 @@ namespace WpfMusicPlayer
                     return;
                 }
 
-                // Check if audio separator is available
-                // if (!_musicService.IsAudioSeparatorAvailable)
-                // {
-                //     MessageBox.Show("Python and audio-separator are not properly installed. Please install them first.",
-                //         "Audio Separator Not Available", MessageBoxButton.OK, MessageBoxImage.Warning);
-                //     return;
-                // }
-
-                bool wasKaraokeMode = _musicService.IsKaraokeMode;
-                
-                // Toggle karaoke mode
-                _musicService.IsKaraokeMode = !_musicService.IsKaraokeMode;
-                
-                // Update button appearance immediately
-                UpdateKaraokeButtonAppearance();
-
-                // If enabling karaoke mode, trigger the audio separation immediately
-                if (_musicService.IsKaraokeMode && !wasKaraokeMode)
+                // Check if stems already exist (if so, switch immediately)
+                if (_musicService.CheckIfStemsExist(_musicService.CurrentSong.FilePath))
                 {
-                    await ProcessKaraokeModeAsync();
+                    await SwitchToInstrumentalTrack();
+                    return;
                 }
-                else if (!_musicService.IsKaraokeMode && wasKaraokeMode)
+
+                _isProcessingKaraoke = true;
+                _lastSeparationAttempt = DateTime.Now;
+                
+                // Show processing state and disable UI
+                ShowProcessingState("Initializing audio separation...", true);
+                SetUIEnabled(false);
+                
+                // Start the separation process
+                bool success = await _musicService.SwitchToKaraokeModeAsync();
+                
+                if (success)
                 {
-                    // Switch back to original song
-                    ShowProcessingState("Switching back to original track...", false);
-                    try
-                    {
-                        await _musicService.SwitchToKaraokeModeAsync();
-                        StatusTextBlock.Text = "Karaoke mode deactivated - Original track loaded";
-                    }
-                    finally
-                    {
-                        HideProcessingState();
-                    }
+                    StatusTextBlock.Text = "Karaoke mode activated - Instrumental track loaded";
+                    UpdateKaraokeButtonAppearance();
+                }
+                else
+                {
+                    StatusTextBlock.Text = "Failed to activate Karaoke mode";
                 }
             }
             catch (Exception ex)
             {
-                // Reset karaoke mode on error
-                _musicService.IsKaraokeMode = false;
-                UpdateKaraokeButtonAppearance();
-                HideProcessingState();
-                
-                MessageBox.Show($"Error toggling karaoke mode: {ex.Message}", 
+                MessageBox.Show($"Error activating karaoke mode: {ex.Message}", 
                     "Karaoke Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 StatusTextBlock.Text = "Ready";
+                UpdateKaraokeButtonAppearance();
+            }
+            finally
+            {
+                // Always reset the processing flag and restore UI
+                _isProcessingKaraoke = false;
+                SetUIEnabled(true);
+                HideProcessingState();
+            }
+        }
+
+        private async Task SwitchToInstrumentalTrack()
+        {
+            if (_musicService.CurrentSong == null) return;
+
+            try
+            {
+                ShowProcessingState("Loading instrumental track...", false);
+                
+                // Get the separated file paths
+                var (vocalsPath, accompanimentPath) = _musicService.GetSeparatedFilePaths(_musicService.CurrentSong.FilePath);
+                
+                if (File.Exists(accompanimentPath))
+                {
+                    var currentPosition = _musicService.CurrentPosition;
+                    var wasPlaying = _musicService.PlaybackState == Models.PlaybackState.Playing;
+
+                    // Load the instrumental track
+                    _musicService.LoadAudioFile(accompanimentPath);
+
+                    // Restore position and playback state
+                    _musicService.CurrentPosition = currentPosition;
+                    if (wasPlaying)
+                    {
+                        _musicService.Play();
+                    }
+                    
+                    StatusTextBlock.Text = "Karaoke mode activated - Instrumental track loaded";
+                    UpdateKaraokeButtonAppearance();
+                }
+                else
+                {
+                    MessageBox.Show("Instrumental track not found. Please try separating the audio again.",
+                        "File Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading instrumental track: {ex.Message}",
+                    "Loading Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                HideProcessingState();
             }
         }
 
@@ -680,15 +759,11 @@ namespace WpfMusicPlayer
                 await _musicService.SwitchToKaraokeModeAsync();
 
                 // Only update status if successful (error handling is done in progress event)
-                if (_musicService.IsKaraokeMode)
-                {
-                    StatusTextBlock.Text = "Karaoke mode activated - Instrumental track loaded";
-                }
+                StatusTextBlock.Text = "Karaoke mode activated - Instrumental track loaded";
             }
             catch (Exception ex)
             {
-                // If failed, revert the karaoke mode
-                _musicService.IsKaraokeMode = false;
+                // If failed, reset button appearance
                 UpdateKaraokeButtonAppearance();
                 StatusTextBlock.Text = $"Failed to activate Karaoke mode: {ex.Message}";
                 throw;
@@ -702,13 +777,20 @@ namespace WpfMusicPlayer
 
         private void UpdateKaraokeButtonAppearance()
         {
-            KaraokeButton.Background = _musicService.IsKaraokeMode ? 
-                System.Windows.Media.Brushes.Green : 
-                System.Windows.Media.Brushes.Transparent;
+            // Check if current song has stems available or if we're playing the instrumental track
+            bool hasStems = _musicService.CurrentSong != null && 
+                           _musicService.CheckIfStemsExist(_musicService.CurrentSong.FilePath);
             
-            KaraokeButton.ToolTip = _musicService.IsKaraokeMode ? 
-                "Exit Karaoke Mode" : 
-                "Karaoke Mode (Instrumental Only)";
+            if (hasStems)
+            {
+                KaraokeButton.Background = System.Windows.Media.Brushes.Green;
+                KaraokeButton.ToolTip = "Karaoke Mode Available - Click to use instrumental track";
+            }
+            else
+            {
+                KaraokeButton.Background = System.Windows.Media.Brushes.Transparent;
+                KaraokeButton.ToolTip = "Karaoke Mode (Instrumental Only) - Will separate vocals first";
+            }
         }
 
         private void ShowProcessingState(string message, bool showOverlay)
@@ -732,6 +814,20 @@ namespace WpfMusicPlayer
         {
             if (LoadingText != null) LoadingText.Text = mainText;
             if (LoadingDetails != null) LoadingDetails.Text = detailText;
+        }
+
+        private void UpdateLoadingProgress(int percentage)
+        {
+            if (LoadingProgressBar != null)
+            {
+                LoadingProgressBar.IsIndeterminate = false;
+                LoadingProgressBar.Value = percentage;
+                LoadingProgressBar.Maximum = 100;
+            }
+            if (LoadingProgressText != null)
+            {
+                LoadingProgressText.Text = $"{percentage}%";
+            }
         }
 
         private void SetUIEnabled(bool enabled)

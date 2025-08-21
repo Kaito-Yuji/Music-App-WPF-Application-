@@ -181,21 +181,14 @@ namespace WpfMusicPlayer.Services
         public bool IsAvailable => _isAvailable;
 
         /// <summary>
-        /// Separates a song into stems (vocals and accompaniment) using audio-separator
+        /// Separates a song into stems (vocals and accompaniment) using the test_fixed method
         /// </summary>
         /// <param name="inputFilePath">Path to the input audio file (can be anywhere on the system)</param>
-        /// <param name="outputDirectory">Directory where separated stems will be saved</param>
         /// <returns>True if separation was successful, false otherwise</returns>
-        public async Task<bool> SeparateAudioAsync(string inputFilePath, string outputDirectory)
+        public async Task<bool> SeparateAudioAsync(string inputFilePath)
         {
             try
             {
-                // if (!_isAvailable)
-                // {
-                //     ReportProgress("Audio Separator is not available. Please ensure Python and audio-separator are properly installed.", 0, true, true);
-                //     return false;
-                // }
-
                 // Validate input file exists
                 if (!File.Exists(inputFilePath))
                 {
@@ -203,42 +196,29 @@ namespace WpfMusicPlayer.Services
                     return false;
                 }
 
-                // Create output directory if it doesn't exist
-                Directory.CreateDirectory(outputDirectory);
+                // Use test_fixed directory in Resources folder
+                var resourcesDir = Path.GetDirectoryName(_audioSeparatorScriptPath);
+                var outputDirectory = Path.Combine(resourcesDir!, "test_fixed");
 
-                // Get the file name for the output folder naming - sanitize for safe path creation
-                var inputFileName = Path.GetFileName(inputFilePath);
-                var sanitizedFileName = SanitizeFileName(Path.GetFileNameWithoutExtension(inputFileName));
-                
-                // Use a shorter, unique output subdirectory name to avoid path length issues
-                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                var outputSubDir = $"temp_{sanitizedFileName}_{timestamp}";
-                
-                // Ensure the subdirectory name isn't too long (Windows path limit is 260 characters)
-                if (outputSubDir.Length > 50)
-                {
-                    outputSubDir = $"temp_{timestamp}_{Path.GetRandomFileName().Replace(".", "")}";
-                }
+                // Create test_fixed directory if it doesn't exist
+                Directory.CreateDirectory(outputDirectory);
 
                 var processStartInfo = new ProcessStartInfo
                 {
                     FileName = _pythonExecutablePath,
-                    Arguments = $"\"{_audioSeparatorScriptPath}\" \"{inputFilePath}\" \"{outputSubDir}\"",
+                    Arguments = $"\"{_audioSeparatorScriptPath}\" \"{inputFilePath}\" \"{outputDirectory}\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true,
-                    WorkingDirectory = Path.GetDirectoryName(_audioSeparatorScriptPath) // Set working directory to Resources folder
+                    WorkingDirectory = Path.GetDirectoryName(_audioSeparatorScriptPath)
                 };
 
                 // Set environment variables to suppress warnings
-                processStartInfo.EnvironmentVariables["PYTHONUNBUFFERED"] = "1"; // Force unbuffered output
-                processStartInfo.EnvironmentVariables["PYTHONWARNINGS"] = "ignore"; // Suppress Python warnings
+                processStartInfo.EnvironmentVariables["PYTHONUNBUFFERED"] = "1";
+                processStartInfo.EnvironmentVariables["PYTHONWARNINGS"] = "ignore";
 
                 ReportProgress("Starting audio separation...", 5);
-
-                // Debug logging
-                ReportProgress($"Using output subdirectory: {outputSubDir}", null);
                 ReportProgress($"Working directory: {Path.GetDirectoryName(_audioSeparatorScriptPath)}", null);
                 ReportProgress("Audio separation may take 5-30 minutes depending on song length...", null);
 
@@ -256,12 +236,34 @@ namespace WpfMusicPlayer.Services
                     var outputTask = ReadOutputAsync(process.StandardOutput, outputLines);
                     var errorTask = ReadOutputAsync(process.StandardError, errorLines);
 
-                    // Wait for the process to complete with timeout
-                    bool finished = process.WaitForExit(1800000); // 30 minute timeout
-                    
-                    if (!finished)
+                    // Create a progress reporting task
+                    var progressStartTime = DateTime.Now;
+                    var progressReportingTask = Task.Run(async () =>
                     {
-                        process.Kill();
+                        while (!process.HasExited)
+                        {
+                            await Task.Delay(10000);
+                            if (!process.HasExited)
+                            {
+                                var elapsed = DateTime.Now - progressStartTime;
+                                ReportProgress($"Processing... {elapsed.Minutes}m {elapsed.Seconds}s elapsed", null);
+                            }
+                        }
+                    });
+
+                    // Wait for the process to complete asynchronously with timeout
+                    var timeoutTask = Task.Delay(1800000); // 30 minutes
+                    var processTask = Task.Run(() => process.WaitForExit());
+                    
+                    var completedTask = await Task.WhenAny(processTask, timeoutTask);
+                    
+                    if (completedTask == timeoutTask)
+                    {
+                        try
+                        {
+                            process.Kill();
+                        }
+                        catch { }
                         ReportProgress("Audio separation process timed out after 30 minutes", 0, true, true);
                         return false;
                     }
@@ -271,73 +273,61 @@ namespace WpfMusicPlayer.Services
                     var output = string.Join("\n", outputLines);
                     var error = string.Join("\n", errorLines);
 
-                    // Check if the process completed successfully
                     if (process.ExitCode == 0)
                     {
                         ReportProgress("Audio separation completed successfully", 90);
                         
-                        // The Python script creates files in Resources/separated_{filename}_{timestamp}/{filename}/
-                        // We need to move them to the expected output directory structure
-                        var resourcesDir = Path.GetDirectoryName(_audioSeparatorScriptPath);
-                        if (string.IsNullOrEmpty(resourcesDir))
-                        {
-                            ReportProgress("Unable to determine Resources directory path", 0, true, true);
-                            return false;
-                        }
+                        // Verify that the expected output files were created
+                        var (vocalsPath, accompanimentPath) = GetSeparatedFilePathsTestFixed(inputFilePath);
                         
-                        var sourceDir = Path.Combine(resourcesDir, outputSubDir, sanitizedFileName);
+                        // Debug logging for troubleshooting
+                        ReportProgress($"Checking for files: Vocals={vocalsPath}, Accompaniment={accompanimentPath}", null);
                         
-                        if (Directory.Exists(sourceDir))
+                        bool vocalsExists = File.Exists(vocalsPath);
+                        bool accompanimentExists = File.Exists(accompanimentPath);
+                        
+                        ReportProgress($"File check results: Vocals={vocalsExists}, Accompaniment={accompanimentExists}", null);
+                        
+                        if (vocalsExists && accompanimentExists)
                         {
-                            ReportProgress("Moving separated files to final location...", 95);
+                            // Validate that the files are not empty
+                            var vocalsSize = new FileInfo(vocalsPath).Length;
+                            var accompanimentSize = new FileInfo(accompanimentPath).Length;
                             
-                            // Create the target directory structure that matches our expected paths
-                            var targetDir = Path.Combine(outputDirectory, Path.GetFileNameWithoutExtension(inputFilePath));
-                            Directory.CreateDirectory(targetDir);
-                            
-                            // Move the separated files to the expected location
-                            var sourceFiles = Directory.GetFiles(sourceDir, "*.wav");
-                            foreach (var sourceFile in sourceFiles)
+                            if (vocalsSize == 0 || accompanimentSize == 0)
                             {
-                                var fileName = Path.GetFileName(sourceFile);
-                                var targetFile = Path.Combine(targetDir, fileName);
-                                
-                                // Move the file, overwriting if it exists
-                                if (File.Exists(targetFile))
-                                {
-                                    File.Delete(targetFile);
-                                }
-                                File.Move(sourceFile, targetFile);
+                                ReportProgress($"Audio separation completed but output files are empty. Vocals: {vocalsSize} bytes, Accompaniment: {accompanimentSize} bytes", 0, true, true);
+                                return false;
                             }
                             
-                            // Clean up the source directory
-                            try
-                            {
-                                Directory.Delete(sourceDir, true);
-                                
-                                // Also try to clean up the parent separated directory if it's empty
-                                var separatedDir = Path.Combine(resourcesDir, outputSubDir);
-                                if (Directory.Exists(separatedDir) && !Directory.EnumerateFileSystemEntries(separatedDir).Any())
-                                {
-                                    Directory.Delete(separatedDir);
-                                }
-                            }
-                            catch
-                            {
-                                // Ignore cleanup errors
-                            }
-                        }
-
-                        // Verify that the expected output files were created in the target location
-                        var (vocalsPath, accompanimentPath) = GetSeparatedFilePaths(inputFilePath, outputDirectory);
-                        if (File.Exists(vocalsPath) && File.Exists(accompanimentPath))
-                        {
                             ReportProgress("Audio separation completed successfully!", 100, true);
                             return true;
                         }
                         else
                         {
-                            ReportProgress("Audio separation completed but expected output files were not found in the target directory", 0, true, true);
+                            // Provide detailed error information
+                            var songDir = Path.Combine(outputDirectory, Path.GetFileNameWithoutExtension(inputFilePath));
+                            var detailedError = $"Audio separation completed but expected output files were not found.\n\n" +
+                                              $"Expected directory: {songDir}\n" +
+                                              $"Vocals file: {vocalsExists}\n" +
+                                              $"Accompaniment file: {accompanimentExists}\n\n";
+                            
+                            if (Directory.Exists(songDir))
+                            {
+                                var actualFiles = Directory.GetFiles(songDir, "*.wav");
+                                detailedError += $"Files actually found: {string.Join(", ", actualFiles.Select(Path.GetFileName))}\n\n";
+                                
+                                if (actualFiles.Length == 0)
+                                {
+                                    detailedError += "No separated audio files were created. This may indicate the audio format is not supported or the file is corrupted.";
+                                }
+                            }
+                            else
+                            {
+                                detailedError += "Output directory was not created, indicating the separation process failed.";
+                            }
+                            
+                            ReportProgress(detailedError, 0, true, true);
                             return false;
                         }
                     }
@@ -345,7 +335,33 @@ namespace WpfMusicPlayer.Services
                     {
                         // Filter out common warnings that don't indicate failure
                         var filteredError = FilterWarnings(error);
-                        ReportProgress($"Audio separation process failed with exit code {process.ExitCode}:\n{filteredError}", 0, true, true);
+                        
+                        // Provide more detailed error information
+                        var errorMessage = $"Audio separation process failed with exit code {process.ExitCode}";
+                        
+                        if (!string.IsNullOrEmpty(filteredError))
+                        {
+                            errorMessage += $":\n{filteredError}";
+                        }
+                        
+                        // Add debugging information
+                        errorMessage += $"\n\nDebug Information:";
+                        errorMessage += $"\nInput file: {inputFilePath}";
+                        errorMessage += $"\nOutput directory: {outputDirectory}";
+                        errorMessage += $"\nWorking directory: {Path.GetDirectoryName(_audioSeparatorScriptPath)}";
+                        
+                        // Check if input file still exists and its size
+                        if (File.Exists(inputFilePath))
+                        {
+                            var fileInfo = new FileInfo(inputFilePath);
+                            errorMessage += $"\nInput file size: {fileInfo.Length} bytes";
+                        }
+                        else
+                        {
+                            errorMessage += $"\nInput file not found!";
+                        }
+                        
+                        ReportProgress(errorMessage, 0, true, true);
                         return false;
                     }
                 }
@@ -617,6 +633,67 @@ namespace WpfMusicPlayer.Services
                 sanitized = sanitized.Substring(0, 30).TrimEnd('_');
                 
             return sanitized;
+        }
+
+        /// <summary>
+        /// Gets the expected paths for separated stems in the test_fixed directory
+        /// </summary>
+        /// <param name="inputFilePath">Original audio file path</param>
+        /// <returns>Tuple containing paths to vocals and accompaniment files</returns>
+        public (string vocalsPath, string accompanimentPath) GetSeparatedFilePathsTestFixed(string inputFilePath)
+        {
+            var resourcesDir = Path.GetDirectoryName(_audioSeparatorScriptPath);
+            var testFixedDir = Path.Combine(resourcesDir!, "test_fixed");
+            var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(inputFilePath);
+            
+            // Use the same sanitization logic as the Python script to match the actual folder name
+            var sanitizedFileName = SanitizePythonFilename(fileNameWithoutExtension);
+            var stemDirectory = Path.Combine(testFixedDir, sanitizedFileName);
+            
+            var vocalsPath = Path.Combine(stemDirectory, "vocals.wav");
+            var accompanimentPath = Path.Combine(stemDirectory, "accompaniment.wav");
+            
+            return (vocalsPath, accompanimentPath);
+        }
+
+        /// <summary>
+        /// Sanitizes filename using the same logic as the Python script
+        /// </summary>
+        /// <param name="filename">The filename to sanitize</param>
+        /// <returns>A sanitized filename that matches the Python script output</returns>
+        private string SanitizePythonFilename(string filename)
+        {
+            if (string.IsNullOrEmpty(filename))
+                return "unknown";
+
+            // Apply the same sanitization as Python script
+            var sanitized = filename;
+            
+            // Remove or replace invalid characters (same as Python regex)
+            sanitized = Regex.Replace(sanitized, @"[<>:""/\\|?*]", "_");
+            sanitized = Regex.Replace(sanitized, @"[()[\]{}]", "_");
+            sanitized = Regex.Replace(sanitized, @"[&%$#@!]", "_");
+            
+            // Remove consecutive underscores
+            sanitized = Regex.Replace(sanitized, @"_+", "_");
+            
+            // Remove leading/trailing underscores and limit length to 30 chars (same as Python)
+            sanitized = sanitized.Trim('_');
+            if (sanitized.Length > 30)
+                sanitized = sanitized.Substring(0, 30).TrimEnd('_');
+                
+            return string.IsNullOrEmpty(sanitized) ? "audio_file" : sanitized;
+        }
+
+        /// <summary>
+        /// Checks if separated stems already exist for a given audio file in test_fixed directory
+        /// </summary>
+        /// <param name="inputFilePath">Original audio file path</param>
+        /// <returns>True if both stems exist, false otherwise</returns>
+        public bool StemsExistTestFixed(string inputFilePath)
+        {
+            var (vocalsPath, accompanimentPath) = GetSeparatedFilePathsTestFixed(inputFilePath);
+            return File.Exists(vocalsPath) && File.Exists(accompanimentPath);
         }
     }
 }

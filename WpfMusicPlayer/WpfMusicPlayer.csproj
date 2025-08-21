@@ -9,6 +9,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="Resources\audio_separator_wrapper.py">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="AUDIO_SEPARATOR_INTEGRATION.md" />
     <None Remove="AUDIO_SEPARATOR_MIGRATION.md" />
     <None Remove="CLEANUP_SUMMARY.md" />

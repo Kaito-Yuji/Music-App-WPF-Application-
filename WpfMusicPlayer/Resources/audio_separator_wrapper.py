@@ -68,6 +68,10 @@ def main():
         print(f"Supported formats: {', '.join(supported_formats)}", file=sys.stderr)
         sys.exit(1)
     
+    # Additional format-specific warnings
+    if input_file.suffix.lower() in {'.wma', '.aac'}:
+        print(f"Warning: Format '{input_file.suffix}' may not separate as well as MP3 or WAV", file=sys.stderr)
+    
     # Create unique output directory for this specific song
     song_name = sanitize_filename(input_file.stem)
     song_output_dir = output_dir / song_name
@@ -133,10 +137,30 @@ def main():
         print("Loading audio file and starting separation...")
         print("Progress: 30%")
         
+        # Check file size before processing
+        file_size = input_file.stat().st_size
+        print(f"Input file size: {file_size} bytes")
+        
+        if file_size == 0:
+            print("Error: Input file is empty (0 bytes)", file=sys.stderr)
+            sys.exit(1)
+        
+        # Warn about potentially problematic files
+        if file_size < 100000:  # Less than 100KB - likely very short
+            print("Warning: Input file is very small (< 100KB). Very short audio clips may not separate well.", file=sys.stderr)
+            print("If separation fails, this may be due to insufficient audio content for AI analysis.", file=sys.stderr)
+            
+        if file_size > 100000000:  # Greater than 100MB
+            print("Warning: Input file is very large (> 100MB). Processing may take a very long time.", file=sys.stderr)
+
         output_files = separator.separate(str(input_file))
         
         print("Progress: 70%")
         print("Separation processing completed!")
+        
+        # Verify separation actually produced files
+        if not output_files:
+            print("Warning: No output files returned from separator", file=sys.stderr)
         
         # Look for separated files in the temp directory
         if temp_separation_dir.exists():
@@ -147,30 +171,71 @@ def main():
             
             print(f"Found {len(all_files)} separated files")
             print("Progress: 85%")
+            
+            # Validate files are not empty and have reasonable content
+            valid_files = []
             for file_path in all_files:
-                print(f"  - {file_path}")
+                file_size = file_path.stat().st_size
+                if file_size > 1000:  # At least 1KB for a valid audio file
+                    valid_files.append(file_path)
+                    print(f"  - {file_path} ({file_size} bytes) OK")
+                elif file_size > 0:
+                    print(f"  - {file_path} ({file_size} bytes) WARNING: Very small, possibly incomplete")
+                    valid_files.append(file_path)  # Include it anyway, let the app decide
+                else:
+                    print(f"  - {file_path} (EMPTY - 0 bytes) ERROR")
+            
+            if not valid_files:
+                print("Error: All separated files are empty or missing", file=sys.stderr)
+                print("This may indicate:", file=sys.stderr)
+                print("  1. The audio file is too short for meaningful separation", file=sys.stderr)
+                print("  2. The audio is mono or already processed", file=sys.stderr)  
+                print("  3. The audio format may not be compatible with this AI model", file=sys.stderr)
+                sys.exit(1)
+            
+            if len(valid_files) < 2:
+                print("Warning: Only one output file generated instead of both vocals and accompaniment", file=sys.stderr)
+                print("This may occur with very short clips or mono audio sources", file=sys.stderr)
                 
             # Move the separated files to the final song directory
-            if all_files:
+            if valid_files:
                 import shutil
                 
                 print("Progress: 90%")
                 print("Saving separated tracks...")
                 
-                for file_path in all_files:
-                    # Determine target name based on content
-                    if any(keyword in file_path.name.lower() for keyword in ['vocal', 'voice']):
+                for file_path in valid_files:
+                    # Determine target name based on content - more robust detection
+                    original_name = file_path.name.lower()
+                    
+                    if any(keyword in original_name for keyword in ['vocal', 'voice', 'singing', 'singer']):
                         target_name = "vocals.wav"
-                    elif any(keyword in file_path.name.lower() for keyword in ['instrumental', 'accompan', 'music']):
+                    elif any(keyword in original_name for keyword in ['instrumental', 'accompan', 'music', 'karaoke', 'backing']):
                         target_name = "accompaniment.wav"
                     else:
-                        target_name = file_path.name
+                        # Fallback: if we can't identify by name, use the file order
+                        # Typically audio-separator creates instrumental first, then vocals
+                        if len(valid_files) == 2:
+                            sorted_files = sorted(valid_files, key=lambda x: x.name)
+                            if file_path == sorted_files[0]:
+                                target_name = "accompaniment.wav"  # First file alphabetically 
+                            else:
+                                target_name = "vocals.wav"  # Second file alphabetically
+                        else:
+                            # Single file - try to determine based on file size or use generic name
+                            target_name = file_path.name  # Keep original name
                     
                     target_path = song_output_dir / target_name
                     
                     # Copy the file (not move, to preserve the original)
                     shutil.copy2(str(file_path), str(target_path))
-                    print(f"Saved {target_name}")
+                    
+                    # Verify the copied file is not empty
+                    if target_path.stat().st_size > 0:
+                        print(f"Saved {target_name} ({target_path.stat().st_size} bytes)")
+                    else:
+                        print(f"Error: Saved file {target_name} is empty", file=sys.stderr)
+                        sys.exit(1)
                 
                 print("Progress: 95%")
                 # Clean up temp directory
@@ -184,9 +249,11 @@ def main():
                 print(f"Audio separation completed successfully!")
                 print(f"Separated files saved to: {song_output_dir}")
             else:
-                print("Warning: No separated files found", file=sys.stderr)
+                print("Error: No valid separated files found", file=sys.stderr)
+                sys.exit(1)
         else:
-            print("Warning: Temp separation directory not found", file=sys.stderr)
+            print("Error: Temp separation directory not found", file=sys.stderr)
+            sys.exit(1)
             
     except Exception as e:
         print(f"Error during separation: {e}", file=sys.stderr)
