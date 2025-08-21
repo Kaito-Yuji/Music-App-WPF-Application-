@@ -183,9 +183,28 @@ namespace WpfMusicPlayer.Services
         }
 
         // Karaoke mode properties - simplified for one-time use
-        private string? _currentKaraokeFilePath;        /// <summary>
-                                                        /// Gets whether the audio separator is available and ready to use
-                                                        /// </summary>
+        private string? _currentKaraokeFilePath;
+        private bool _isInKaraokeMode = false;
+
+        /// <summary>
+        /// Gets whether the player is currently in karaoke mode (playing instrumental track)
+        /// </summary>
+        public bool IsInKaraokeMode
+        {
+            get => _isInKaraokeMode;
+            private set
+            {
+                if (_isInKaraokeMode != value)
+                {
+                    _isInKaraokeMode = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets whether the audio separator is available and ready to use
+        /// </summary>
         public bool IsAudioSeparatorAvailable => _audioSeparatorService.IsAvailable;
 
         /// <summary>
@@ -642,6 +661,13 @@ namespace WpfMusicPlayer.Services
                 _wavePlayer = new WaveOutEvent();
                 _wavePlayer.Init(_audioFileReader);
                 _wavePlayer.PlaybackStopped += OnPlaybackStopped;
+
+                // Reset karaoke mode if we're loading a different file than the karaoke track
+                if (IsInKaraokeMode && filePath != _currentKaraokeFilePath)
+                {
+                    IsInKaraokeMode = false;
+                    _currentKaraokeFilePath = null;
+                }
 
                 // Explicitly reset position and notify UI
                 OnPropertyChanged(nameof(CurrentPosition));
@@ -1184,6 +1210,7 @@ namespace WpfMusicPlayer.Services
                     // Load the instrumental audio file
                     LoadFile(accompanimentPath);
                     _currentKaraokeFilePath = accompanimentPath;
+                    IsInKaraokeMode = true;
 
                     // Restore position and playback state
                     CurrentPosition = currentPosition;
@@ -1212,6 +1239,45 @@ namespace WpfMusicPlayer.Services
                 AudioSeparationProgress?.Invoke(this, new AudioSeparatorService.ProgressEventArgs
                 {
                     Message = $"Error switching to karaoke mode: {ex.Message}",
+                    IsCompleted = true,
+                    IsError = true
+                });
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Switches back from karaoke mode to the original song
+        /// </summary>
+        public bool SwitchBackFromKaraokeMode()
+        {
+            if (CurrentSong == null || !IsInKaraokeMode) return false;
+
+            try
+            {
+                var currentPosition = CurrentPosition;
+                var wasPlaying = PlaybackState == Models.PlaybackState.Playing;
+
+                // Load the original audio file
+                LoadFile(CurrentSong.FilePath);
+                _currentKaraokeFilePath = null;
+                IsInKaraokeMode = false;
+
+                // Restore position and playback state
+                CurrentPosition = currentPosition;
+                if (wasPlaying)
+                {
+                    Play();
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // Report error through progress event
+                AudioSeparationProgress?.Invoke(this, new AudioSeparatorService.ProgressEventArgs
+                {
+                    Message = $"Error switching back from karaoke mode: {ex.Message}",
                     IsCompleted = true,
                     IsError = true
                 });
