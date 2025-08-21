@@ -6,8 +6,13 @@
         xmlns:local="clr-namespace:WpfMusicPlayer"
         xmlns:converters="clr-namespace:WpfMusicPlayer.Converters"
         mc:Ignorable="d"
-        Title="Offline Spotify Clone" Height="700" Width="1200"
-        WindowStartupLocation="CenterScreen">
+        Title="Karaoke Player" Height="700" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        Background="#121212"
+        BorderBrush="#2d2d30"
+        BorderThickness="1"
+        WindowStyle="SingleBorderWindow"
+        ResizeMode="CanResize">
 
     <Window.Resources>
         <converters:ByteArrayToImageConverter x:Key="ByteArrayToImageConverter"/>
@@ -167,11 +172,9 @@
                     <Button x:Name="CreatePlaylistButton" Content="➕ Create Playlist" 
                             Style="{StaticResource ModernButton}" Click="CreatePlaylistButton_Click" Height="31"/>
 
-                    <Button x:Name="StatisticsButton" Content="📊 Listening Statistics" 
-                            Style="{StaticResource ModernButton}" Click="StatisticsButton_Click" Height="31" Margin="5,5,5,5"/>
-
                     <ListBox x:Name="PlaylistsListBox" Background="Transparent" BorderThickness="0"
-                             Margin="0,10,0,0" SelectionChanged="PlaylistsListBox_SelectionChanged">
+                             Margin="0,10,0,0" SelectionChanged="PlaylistsListBox_SelectionChanged"
+                             Style="{StaticResource CustomListBoxStyle}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Border Padding="5" Margin="0,2">
@@ -181,10 +184,12 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="White" 
-                                                 FontSize="12"/>
+                                                 FontSize="12" VerticalAlignment="Center"/>
                                         <Button Grid.Column="1" Content="🗑️" 
                                                 Style="{StaticResource ModernButton}"
                                                 Width="25" Height="25" Padding="0"
+                                                VerticalAlignment="Center"
+                                                Margin="10,0,0,0"
                                                 Click="DeletePlaylistButton_Click"
                                                 Tag="{Binding}"/>
                                     </Grid>
@@ -230,7 +235,8 @@
                 <ListView x:Name="SongsListView" Grid.Row="1" 
                           Background="Transparent" Foreground="White"
                           Margin="10,0,10,10" MouseDoubleClick="SongsListView_MouseDoubleClick" SelectionChanged="SongsListView_SelectionChanged"
-                          BorderThickness="0">
+                          BorderThickness="0"
+                          Style="{StaticResource CustomListViewStyle}">
                     <ListView.View>
                         <GridView ColumnHeaderContainerStyle="{StaticResource GridViewColumnHeaderStyle}">
                             <GridViewColumn Header="#" Width="40">
@@ -386,7 +392,7 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0">
+                                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Title}" Foreground="White" 
                                                          FontSize="12" TextTrimming="CharacterEllipsis"/>
                                                 <TextBlock Text="{Binding Artist}" Foreground="Gray" 
@@ -395,6 +401,8 @@
                                             <Button Grid.Column="1" Content="❌" 
                                                     Style="{StaticResource ModernButton}"
                                                     Width="25" Height="25" Padding="0"
+                                                    VerticalAlignment="Center"
+                                                    Margin="10,0,0,0"
                                                     Click="RemoveFromQueueButton_Click"
                                                     Tag="{Binding}"/>
                                         </Grid>
@@ -434,19 +442,19 @@
                     <!-- Control Buttons -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10" Height="70">
                         <Button x:Name="KaraokeButton" Content="🎤" ToolTip="Karaoke Mode (Instrumental Only)"
-                                Style="{StaticResource ModernButton}" Click="KaraokeButton_Click" Width="22"/>
+                                Style="{StaticResource ModernButton}" Click="KaraokeButton_Click" Width="22" Background="#282828"/>
                         <Button x:Name="ShuffleButton" Content="{Binding IsShuffleOn, Converter={StaticResource ShuffleToStringConverter}, Mode=OneWay}" 
-                                Style="{StaticResource ModernButton}" Click="ShuffleButton_Click"/>
+                                Style="{StaticResource ModernButton}" Click="ShuffleButton_Click" Background="#282828"/>
                         <Button x:Name="PreviousButton" Content="⏮️" 
-                                Style="{StaticResource ModernButton}" Click="PreviousButton_Click"/>
+                                Style="{StaticResource ModernButton}" Click="PreviousButton_Click" Background="#282828"/>
                         <Button x:Name="PlayPauseButton" Content="▶️" 
                                 Style="{StaticResource PlayButton}" Click="PlayPauseButton_Click"/>
                         <Button x:Name="NextButton" Content="⏭️" 
-                                Style="{StaticResource ModernButton}" Click="NextButton_Click"/>
+                                Style="{StaticResource ModernButton}" Click="NextButton_Click" Background="#282828"/>
                         <Button x:Name="RepeatButton" Content="{Binding RepeatMode, Converter={StaticResource RepeatModeToStringConverter}, Mode=OneWay}" 
-                                Style="{StaticResource ModernButton}" Click="RepeatButton_Click"/>
-                        <Button x:Name="ExportButton" Content="💾" ToolTip="Export Stems"
-                                Style="{StaticResource ModernButton}" Click="ExportButton_Click"/>
+                                Style="{StaticResource ModernButton}" Click="RepeatButton_Click" Background="#282828"/>
+                        <!-- <Button x:Name="ExportButton" Content="💾" ToolTip="Export Stems"
+                                Style="{StaticResource ModernButton}" Click="ExportButton_Click"/> -->
                     </StackPanel>
 
                     <!-- Progress Bar -->

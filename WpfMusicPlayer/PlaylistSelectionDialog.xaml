@@ -3,7 +3,95 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Select Playlist" Height="400" Width="500"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize">
+        ResizeMode="NoResize"
+        Background="#121212"
+        BorderBrush="#2d2d30"
+        BorderThickness="1"
+        WindowStyle="None">
+    <Window.Resources>
+
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="#2d2d30"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                            CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                        VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#404040"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#1e1e1e"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ModernTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#2d2d30"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#404040"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}" 
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="3">
+                            <ScrollViewer x:Name="PART_ContentHost" 
+                                    Focusable="False" 
+                                    HorizontalScrollBarVisibility="Hidden" 
+                                    VerticalScrollBarVisibility="Hidden"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="#1db954"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#1db954"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                            CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                        VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#1ed760"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#169c46"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    
     <Grid Background="#121212">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -17,7 +105,8 @@
 
         <ListBox x:Name="PlaylistsListBox" Grid.Row="1"
                  Background="#282828" Foreground="White" BorderThickness="0"
-                 Margin="20,0,20,20" MouseDoubleClick="PlaylistsListBox_MouseDoubleClick">
+                 Margin="20,0,20,20" MouseDoubleClick="PlaylistsListBox_MouseDoubleClick"
+                 Style="{StaticResource CustomListBoxStyle}">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <Border Padding="10" Margin="0,2">
@@ -58,11 +147,11 @@
             <Button x:Name="OkButton" Content="Add to Playlist" 
                     Background="#1db954" Foreground="White" BorderThickness="0"
                     Padding="20,8" Margin="0,0,10,0" FontSize="12"
-                    Cursor="Hand" Click="OkButton_Click"/>
+                    Cursor="Hand" Click="OkButton_Click" Style="{StaticResource PrimaryButton}" Width="90" Height="30"/>
             <Button x:Name="CancelButton" Content="Cancel" 
-                    Background="#606060" Foreground="White" BorderThickness="0"
+                    Foreground="White" BorderThickness="0"
                     Padding="20,8" FontSize="12"
-                    Cursor="Hand" Click="CancelButton_Click"/>
+                    Cursor="Hand" Click="CancelButton_Click" Style="{StaticResource ModernButton}" Width="90" Height="30"/>
         </StackPanel>
     </Grid>
 </Window>

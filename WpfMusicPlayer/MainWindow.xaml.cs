@@ -881,19 +881,6 @@ namespace WpfMusicPlayer
             // Keep search enabled as it doesn't affect playback
         }
 
-        private string GetAudioSeparatorDebugInfo()
-        {
-            try
-            {
-                // Get debug info from the service
-                return _musicService.GetAudioSeparatorSetupInfo();
-            }
-            catch (Exception ex)
-            {
-                return $"Unable to get debug information: {ex.Message}";
-            }
-        }
-
         private async void ExportButton_Click(object sender, RoutedEventArgs e)
         {
             var selectedSong = SongsListView.SelectedItem as Song;

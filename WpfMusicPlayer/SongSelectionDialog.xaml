@@ -3,7 +3,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:WpfMusicPlayer.Converters"
         Title="Add Songs to Playlist" Height="600" Width="800"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner"
+        Background="#121212"
+        BorderBrush="#2d2d30"
+        BorderThickness="1"
+        WindowStyle="None">
 
     <Window.Resources>
         <converters:ByteArrayToImageConverter x:Key="ByteArrayToImageConverter"/>
@@ -98,9 +102,9 @@
                          TextChanged="SearchTextBox_TextChanged"
                          Text="Search songs..."/>
                 <Button x:Name="SelectAllButton" Grid.Column="1" Content="Select All"
-                        Style="{StaticResource ModernButton}" Click="SelectAllButton_Click"/>
+                        Style="{StaticResource ModernButton}" Click="SelectAllButton_Click" Background="#282828"/>
                 <Button x:Name="ClearSelectionButton" Grid.Column="2" Content="Clear All"
-                        Style="{StaticResource ModernButton}" Click="ClearSelectionButton_Click"/>
+                        Style="{StaticResource ModernButton}" Click="ClearSelectionButton_Click" Background="#282828"/>
             </Grid>
         </Border>
 
@@ -108,7 +112,8 @@
         <ListView x:Name="SongsListView" Grid.Row="2" 
                   Background="Transparent" Foreground="White"
                   Margin="10,0,10,10" SelectionMode="Multiple"
-                  BorderThickness="0">
+                  BorderThickness="0"
+                  Style="{StaticResource CustomListViewStyle}">
             <ListView.View>
                 <GridView ColumnHeaderContainerStyle="{StaticResource GridViewColumnHeaderStyle}">
                     <GridViewColumn Header="✓" Width="40">
@@ -224,7 +229,7 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button x:Name="AddSelectedButton" Content="Add Selected" 
                             Style="{StaticResource ModernButton}" 
-                            Background="#1db954" Click="AddSelectedButton_Click" Width="80" Height="21"/>
+                            Background="#1db954" Click="AddSelectedButton_Click" Width="80" Height="30"/>
                     <Button x:Name="CancelButton" Content="Cancel" 
                             Style="{StaticResource ModernButton}" 
                             Click="CancelButton_Click" Width="45"/>

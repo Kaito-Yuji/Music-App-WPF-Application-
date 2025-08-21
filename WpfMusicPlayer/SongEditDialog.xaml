@@ -7,7 +7,11 @@
         mc:Ignorable="d"
         Title="Edit Song" Height="600" Width="500"
         WindowStartupLocation="CenterOwner"
-        Background="#121212">
+        Background="#121212"
+        BorderBrush="#2d2d30"
+        BorderThickness="1"
+        ResizeMode="NoResize"
+        WindowStyle="None">
 
     <Window.Resources>
         <converters:ByteArrayToImageConverter x:Key="ByteArrayToImageConverter"/>
@@ -107,7 +111,8 @@
                    Margin="0,0,0,20"/>
 
         <!-- Content -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" 
+                      Style="{StaticResource CustomScrollViewerStyle}">
             <StackPanel>
                 <!-- Album Art Section -->
                 <Border Background="#282828" Padding="15" CornerRadius="5" Margin="0,0,0,20">
@@ -136,11 +141,13 @@
                                 <Button x:Name="ChangeImageButton" 
                                         Content="📁 Change Image" 
                                         Style="{StaticResource ModernButton}"
-                                        Click="ChangeImageButton_Click"/>
+                                        Click="ChangeImageButton_Click"
+                                        Background="#282828"/>
                                 <Button x:Name="RemoveImageButton" 
                                         Content="🗑️ Remove Image" 
                                         Style="{StaticResource ModernButton}"
-                                        Click="RemoveImageButton_Click"/>
+                                        Click="RemoveImageButton_Click"
+                                        Background="#282828"/>
                                 <TextBlock Text="Supported: JPG, PNG, BMP, GIF" 
                                            Foreground="Gray" FontSize="10" 
                                            Margin="5,10,0,0"/>
@@ -207,10 +214,10 @@
             </Grid.ColumnDefinitions>
 
             <Button x:Name="CancelButton"
-                    Height="20"
+                    Height="30"
                     Width="50"
                     Grid.Column="1"
-                    Content="Cancel" 
+                    Content="Cancel"
                     Style="{StaticResource ModernButton}"
                     Click="CancelButton_Click"
                     IsCancel="True"/>

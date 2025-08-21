@@ -221,21 +221,6 @@ namespace WpfMusicPlayer.Services
         {
             return _audioSeparatorService.StemsExistTestFixed(inputFilePath);
         }
-
-        /// <summary>
-        /// Gets debug information about the audio separator setup
-        /// </summary>
-        /// <returns>String containing debug information</returns>
-        public string GetAudioSeparatorSetupInfo()
-        {
-            return _audioSeparatorService.GetSetupInfo();
-        }
-
-        /// <summary>
-        /// Gets the separated file paths for a given input file using test_fixed method
-        /// </summary>
-        /// <param name="inputFilePath">Original audio file path</param>
-        /// <returns>Tuple containing paths to vocals and accompaniment files</returns>
         public (string vocalsPath, string accompanimentPath) GetSeparatedFilePaths(string inputFilePath)
         {
             return _audioSeparatorService.GetSeparatedFilePathsTestFixed(inputFilePath);

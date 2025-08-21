@@ -3,7 +3,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:WpfMusicPlayer.Converters"
         Title="Playlist Details" Height="700" Width="1000"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner"
+        Background="#121212"
+        BorderBrush="#2d2d30"
+        BorderThickness="1"
+        WindowStyle="None">
 
     <Window.Resources>
         <converters:ByteArrayToImageConverter x:Key="ByteArrayToImageConverter"/>
@@ -113,13 +117,13 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="PlayAllButton" Content="▶️ Play All" 
                             Style="{StaticResource ModernButton}" 
-                            Background="#1db954" Click="PlayAllButton_Click" Height="26" Width="63"/>
+                            Background="#1db954" Click="PlayAllButton_Click" Height="30" Width="65"/>
                     <Button x:Name="EditPlaylistButton" Content="✏️ Edit" 
                             Style="{StaticResource ModernButton}" 
                             Click="EditPlaylistButton_Click" Width="55"/>
                     <Button x:Name="CloseButton" Content="❌ Close" 
                             Style="{StaticResource ModernButton}" 
-                            Click="CloseButton_Click" Width="58"/>
+                            Click="CloseButton_Click" Width="60"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -146,7 +150,8 @@
         <ListView x:Name="PlaylistSongsListView" Grid.Row="2" 
                   Background="Transparent" Foreground="White"
                   Margin="10,0,10,10" MouseDoubleClick="PlaylistSongsListView_MouseDoubleClick"
-                  BorderThickness="0">
+                  BorderThickness="0"
+                  Style="{StaticResource CustomListViewStyle}">
             <ListView.View>
                 <GridView ColumnHeaderContainerStyle="{StaticResource GridViewColumnHeaderStyle}">
                     <GridViewColumn Header="#" Width="40">
@@ -222,7 +227,7 @@
                                         Click="RemoveFromPlaylistButton_Click"
                                         Tag="{Binding}"
                                         ToolTip="Remove from Playlist"
-                                        Background="#dc3545"/>
+                                        />
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
