@@ -19,12 +19,17 @@ namespace WpfMusicPlayer.Services
         #region Private Fields
         private readonly string[] _supportedExtensions = { ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma" };
         private readonly string _playlistsFilePath;
+        private readonly string _songStatsFilePath;
         private readonly Random _random = new Random();
         private readonly DispatcherTimer _positionTimer;
         private readonly ListeningStatsService _listeningStatsService;
         private readonly AudioSeparatorService _audioSeparatorService;
         private bool _isLoadingNewSong = false; // Flag to prevent auto-advance when loading new song
         private bool _isSwitchingTrack = false;
+
+        // Song stats tracking
+        private Dictionary<string, SongStats> _songStats = new Dictionary<string, SongStats>();
+        private DateTime _lastStatsSave = DateTime.MinValue;
 
         // Audio components
         private IWavePlayer? _wavePlayer;
@@ -253,6 +258,7 @@ namespace WpfMusicPlayer.Services
         public event EventHandler? QueueChanged;
         public event EventHandler<string>? ScanProgressChanged;
         public event EventHandler<AudioSeparatorService.ProgressEventArgs>? AudioSeparationProgress;
+        public event EventHandler<Song>? SongViewCountChanged;
         public event PropertyChangedEventHandler? PropertyChanged;
         #endregion
 
@@ -276,6 +282,10 @@ namespace WpfMusicPlayer.Services
             var appFolder = Path.Combine(appDataPath, "WpfMusicPlayer");
             Directory.CreateDirectory(appFolder);
             _playlistsFilePath = Path.Combine(appFolder, "playlists.json");
+            _songStatsFilePath = Path.Combine(appFolder, "song_stats.json");
+
+            // Load existing song stats
+            LoadSongStats();
 
             // Initialize position timer
             _positionTimer = new DispatcherTimer
@@ -292,6 +302,9 @@ namespace WpfMusicPlayer.Services
                 {
                     _listeningStatsService.OnPositionUpdate(CurrentSong, CurrentPosition, TotalDuration);
                 }
+
+                // Try to count song view at 80% threshold
+                TryCountSongViewAtThreshold();
             };
 
             LoadPlaylistsFromFile();
@@ -364,6 +377,9 @@ namespace WpfMusicPlayer.Services
                 {
                     song.AlbumArt = file.Tag.Pictures[0].Data.Data;
                 }
+
+                // Apply saved stats to the song
+                ApplyStatsToSong(song);
 
                 return song;
             }
@@ -667,6 +683,12 @@ namespace WpfMusicPlayer.Services
                 {
                     IsInKaraokeMode = false;
                     _currentKaraokeFilePath = null;
+                }
+
+                // Reset view count flag for new song
+                if (CurrentSong != null)
+                {
+                    CurrentSong.HasCountedView = false;
                 }
 
                 // Explicitly reset position and notify UI
@@ -1405,6 +1427,97 @@ namespace WpfMusicPlayer.Services
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+        #endregion
+
+        #region Song Stats and View Counting
+        private void TryCountSongViewAtThreshold()
+        {
+            try
+            {
+                if (CurrentSong == null || _audioFileReader == null)
+                    return;
+
+                if (CurrentSong.HasCountedView)
+                    return;
+
+                var total = _audioFileReader.TotalTime.TotalSeconds;
+                if (total <= 0)
+                    return;
+
+                var current = _audioFileReader.CurrentTime.TotalSeconds;
+                if (current / total >= 0.8) // Count view when 80% of song is played
+                {
+                    CurrentSong.ViewCount++;
+                    CurrentSong.HasCountedView = true;
+                    UpdateAndPersistStats(CurrentSong);
+                    SongViewCountChanged?.Invoke(this, CurrentSong);
+                }
+            }
+            catch { }
+        }
+
+        private void LoadSongStats()
+        {
+            try
+            {
+                if (System.IO.File.Exists(_songStatsFilePath))
+                {
+                    var json = System.IO.File.ReadAllText(_songStatsFilePath);
+                    _songStats = JsonSerializer.Deserialize<Dictionary<string, SongStats>>(json) ?? new Dictionary<string, SongStats>();
+                }
+            }
+            catch
+            {
+                _songStats = new Dictionary<string, SongStats>();
+            }
+        }
+
+        private void ApplyStatsToSong(Song song)
+        {
+            if (_songStats.TryGetValue(song.FilePath, out var stats))
+            {
+                song.ViewCount = stats.ViewCount;
+            }
+        }
+
+        private void UpdateAndPersistStats(Song song)
+        {
+            if (!_songStats.TryGetValue(song.FilePath, out var stats))
+            {
+                stats = new SongStats();
+                _songStats[song.FilePath] = stats;
+            }
+
+            stats.ViewCount = song.ViewCount;
+            stats.LastPlayed = DateTime.UtcNow;
+
+            SaveSongStatsDebounced();
+        }
+
+        private void SaveSongStatsDebounced()
+        {
+            if ((DateTime.UtcNow - _lastStatsSave).TotalMilliseconds < 500)
+                return;
+
+            _lastStatsSave = DateTime.UtcNow;
+            SaveSongStatsImmediate();
+        }
+
+        private void SaveSongStatsImmediate()
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(_songStats, new JsonSerializerOptions { WriteIndented = true });
+                System.IO.File.WriteAllText(_songStatsFilePath, json);
+            }
+            catch { }
+        }
+
+        private class SongStats
+        {
+            public int ViewCount { get; set; }
+            public DateTime LastPlayed { get; set; }
         }
         #endregion
 
