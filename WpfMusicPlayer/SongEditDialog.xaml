@@ -206,7 +206,9 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <Button x:Name="CancelButton" 
+            <Button x:Name="CancelButton"
+                    Height="20"
+                    Width="50"
                     Grid.Column="1"
                     Content="Cancel" 
                     Style="{StaticResource ModernButton}"
@@ -214,6 +216,7 @@
                     IsCancel="True"/>
             
             <Button x:Name="SaveButton" 
+                    Width="100"
                     Grid.Column="2"
                     Content="Save Changes" 
                     Style="{StaticResource PrimaryButton}"
