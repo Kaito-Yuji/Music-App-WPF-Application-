@@ -33,17 +33,12 @@ namespace WpfMusicPlayer.Services
             // Get the path to the audio separator script
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
             
-            // Debug: Log the base directory
-            System.Diagnostics.Debug.WriteLine($"AudioSeparatorService: BaseDirectory = {baseDir}");
-            
             // Try multiple possible locations for the script
             string[] possibleScriptPaths = {
                 // First try the bin/Resources folder (where your manual test worked)
                 Path.Combine(baseDir, "Resources", "audio_separator_wrapper.py"),
-                // Then try going up to project root from bin/Debug/net8.0-windows
+                // Then try going up to project root
                 Path.Combine(Directory.GetParent(baseDir)?.Parent?.Parent?.FullName ?? "", "Resources", "audio_separator_wrapper.py"),
-                // Try bin/Resources specifically
-                Path.Combine(Directory.GetParent(baseDir)?.Parent?.Parent?.FullName ?? "", "bin", "Resources", "audio_separator_wrapper.py"),
                 // Fallback to any Resources folder we can find
                 Path.Combine(Path.GetDirectoryName(baseDir) ?? "", "Resources", "audio_separator_wrapper.py")
             };
@@ -51,18 +46,11 @@ namespace WpfMusicPlayer.Services
             _audioSeparatorScriptPath = "";
             foreach (var path in possibleScriptPaths)
             {
-                System.Diagnostics.Debug.WriteLine($"AudioSeparatorService: Checking path: {path}");
                 if (!string.IsNullOrEmpty(path) && File.Exists(path))
                 {
                     _audioSeparatorScriptPath = path;
-                    System.Diagnostics.Debug.WriteLine($"AudioSeparatorService: Found script at: {path}");
                     break;
                 }
-            }
-            
-            if (string.IsNullOrEmpty(_audioSeparatorScriptPath))
-            {
-                System.Diagnostics.Debug.WriteLine("AudioSeparatorService: Script not found in any expected location");
             }
             
             // Check if both Python and the script are available
@@ -246,9 +234,6 @@ namespace WpfMusicPlayer.Services
 
                 ReportProgress("Starting audio separation...", 5);
                 ReportProgress($"Working directory: {Path.GetDirectoryName(_audioSeparatorScriptPath)}", null);
-                ReportProgress($"Script path: {_audioSeparatorScriptPath}", null);
-                ReportProgress($"Python path: {_pythonExecutablePath}", null);
-                ReportProgress($"Command: {_pythonExecutablePath} \"{_audioSeparatorScriptPath}\" \"{inputFilePath}\" \"{outputDirectory}\"", null);
                 ReportProgress("Audio separation may take 5-30 minutes depending on song length...", null);
 
                 // Start the process

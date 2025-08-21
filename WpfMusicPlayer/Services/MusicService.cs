@@ -1161,12 +1161,15 @@ namespace WpfMusicPlayer.Services
 
             try
             {
-                // Always separate the audio - don't check for existing stems
-                // This ensures fresh separation every time the karaoke button is pressed
-                bool success = await _audioSeparatorService.SeparateAudioAsync(CurrentSong.FilePath);
-                if (!success)
+                // Check if stems already exist in test_fixed directory
+                if (!_audioSeparatorService.StemsExistTestFixed(CurrentSong.FilePath))
                 {
-                    return false; // Error reporting is handled by the progress events
+                    // Separate the audio using the test_fixed method
+                    bool success = await _audioSeparatorService.SeparateAudioAsync(CurrentSong.FilePath);
+                    if (!success)
+                    {
+                        return false; // Error reporting is handled by the progress events
+                    }
                 }
 
                 // Get the separated file paths from test_fixed directory
