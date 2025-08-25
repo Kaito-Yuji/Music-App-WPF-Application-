@@ -6,8 +6,13 @@
         xmlns:local="clr-namespace:WpfMusicPlayer"
         xmlns:converters="clr-namespace:WpfMusicPlayer.Converters"
         mc:Ignorable="d"
-        Title="Offline Spotify Clone" Height="700" Width="1200"
-        WindowStartupLocation="CenterScreen">
+        Title="Karaoke Player" Height="700" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        Background="#121212"
+        BorderBrush="#2d2d30"
+        BorderThickness="1"
+        WindowStyle="SingleBorderWindow"
+        ResizeMode="CanResize">
 
     <Window.Resources>
         <converters:ByteArrayToImageConverter x:Key="ByteArrayToImageConverter"/>
@@ -168,7 +173,8 @@
                             Style="{StaticResource ModernButton}" Click="CreatePlaylistButton_Click" Height="31"/>
 
                     <ListBox x:Name="PlaylistsListBox" Background="Transparent" BorderThickness="0"
-                             Margin="0,10,0,0" SelectionChanged="PlaylistsListBox_SelectionChanged">
+                             Margin="0,10,0,0" SelectionChanged="PlaylistsListBox_SelectionChanged"
+                             Style="{StaticResource CustomListBoxStyle}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Border Padding="5" Margin="0,2">
@@ -178,10 +184,12 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="White" 
-                                                 FontSize="12"/>
+                                                 FontSize="12" VerticalAlignment="Center"/>
                                         <Button Grid.Column="1" Content="🗑️" 
                                                 Style="{StaticResource ModernButton}"
                                                 Width="25" Height="25" Padding="0"
+                                                VerticalAlignment="Center"
+                                                Margin="10,0,0,0"
                                                 Click="DeletePlaylistButton_Click"
                                                 Tag="{Binding}"/>
                                     </Grid>
@@ -211,8 +219,15 @@
                                  Padding="10" FontSize="14" 
                                  TextChanged="SearchTextBox_TextChanged"
                                  Text="Search songs, artists, albums..."/>
-                        <TextBlock Grid.Column="1" x:Name="StatusTextBlock" 
-                                   Foreground="Gray" VerticalAlignment="Center" Margin="10,0"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0">
+                            <ProgressBar x:Name="ProcessingProgressBar" 
+                                       Width="100" Height="8" 
+                                       Visibility="Collapsed"
+                                       IsIndeterminate="True"
+                                       Margin="0,0,10,0"/>
+                            <TextBlock x:Name="StatusTextBlock" 
+                                     Foreground="Gray" VerticalAlignment="Center"/>
+                        </StackPanel>
                     </Grid>
                 </Border>
 
@@ -220,7 +235,8 @@
                 <ListView x:Name="SongsListView" Grid.Row="1" 
                           Background="Transparent" Foreground="White"
                           Margin="10,0,10,10" MouseDoubleClick="SongsListView_MouseDoubleClick" SelectionChanged="SongsListView_SelectionChanged"
-                          BorderThickness="0">
+                          BorderThickness="0"
+                          Style="{StaticResource CustomListViewStyle}">
                     <ListView.View>
                         <GridView ColumnHeaderContainerStyle="{StaticResource GridViewColumnHeaderStyle}">
                             <GridViewColumn Header="#" Width="40">
@@ -278,6 +294,13 @@
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding DurationText}" Foreground="Gray"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Views" Width="70">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ViewCount}" Foreground="Gray" HorizontalAlignment="Center"/>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
@@ -369,7 +392,7 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0">
+                                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Title}" Foreground="White" 
                                                          FontSize="12" TextTrimming="CharacterEllipsis"/>
                                                 <TextBlock Text="{Binding Artist}" Foreground="Gray" 
@@ -378,6 +401,8 @@
                                             <Button Grid.Column="1" Content="❌" 
                                                     Style="{StaticResource ModernButton}"
                                                     Width="25" Height="25" Padding="0"
+                                                    VerticalAlignment="Center"
+                                                    Margin="10,0,0,0"
                                                     Click="RemoveFromQueueButton_Click"
                                                     Tag="{Binding}"/>
                                         </Grid>
@@ -416,16 +441,20 @@
                 <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center">
                     <!-- Control Buttons -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10" Height="70">
+                        <Button x:Name="KaraokeButton" Content="🎤" ToolTip="Karaoke Mode (Instrumental Only)"
+                                Style="{StaticResource ModernButton}" Click="KaraokeButton_Click" Width="22" Background="#282828"/>
                         <Button x:Name="ShuffleButton" Content="{Binding IsShuffleOn, Converter={StaticResource ShuffleToStringConverter}, Mode=OneWay}" 
-                                Style="{StaticResource ModernButton}" Click="ShuffleButton_Click"/>
+                                Style="{StaticResource ModernButton}" Click="ShuffleButton_Click" Background="#282828"/>
                         <Button x:Name="PreviousButton" Content="⏮️" 
-                                Style="{StaticResource ModernButton}" Click="PreviousButton_Click"/>
+                                Style="{StaticResource ModernButton}" Click="PreviousButton_Click" Background="#282828"/>
                         <Button x:Name="PlayPauseButton" Content="▶️" 
                                 Style="{StaticResource PlayButton}" Click="PlayPauseButton_Click"/>
                         <Button x:Name="NextButton" Content="⏭️" 
-                                Style="{StaticResource ModernButton}" Click="NextButton_Click"/>
+                                Style="{StaticResource ModernButton}" Click="NextButton_Click" Background="#282828"/>
                         <Button x:Name="RepeatButton" Content="{Binding RepeatMode, Converter={StaticResource RepeatModeToStringConverter}, Mode=OneWay}" 
-                                Style="{StaticResource ModernButton}" Click="RepeatButton_Click"/>
+                                Style="{StaticResource ModernButton}" Click="RepeatButton_Click" Background="#282828"/>
+                        <!-- <Button x:Name="ExportButton" Content="💾" ToolTip="Export Stems"
+                                Style="{StaticResource ModernButton}" Click="ExportButton_Click"/> -->
                     </StackPanel>
 
                     <!-- Progress Bar -->
@@ -462,5 +491,29 @@
                 </StackPanel>
             </Grid>
         </Border>
+
+        <!-- Loading Overlay for Audio Processing -->
+        <Grid x:Name="LoadingOverlay" Background="#80000000" Visibility="Collapsed" Panel.ZIndex="1000">
+            <Border Background="#2d2d30" CornerRadius="10" Padding="30" 
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    BorderBrush="#404040" BorderThickness="1">
+                <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                    <TextBlock x:Name="LoadingText" Text="Processing Audio..." 
+                             Foreground="White" FontSize="16" FontWeight="Bold"
+                             HorizontalAlignment="Center" Margin="0,0,0,15"/>
+                    <ProgressBar x:Name="LoadingProgressBar" Width="250" Height="8" IsIndeterminate="True" 
+                               Style="{StaticResource {x:Type ProgressBar}}" Margin="0,0,0,15"/>
+                    <TextBlock x:Name="LoadingDetails" Text="Separating vocals and instruments... This may take 5-30 minutes depending on song length."
+                             Foreground="Gray" FontSize="12" TextWrapping="Wrap"
+                             HorizontalAlignment="Center" MaxWidth="300" TextAlignment="Center"/>
+                    <TextBlock Text="Please do not close the application."
+                             Foreground="Orange" FontSize="11" FontStyle="Italic"
+                             HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                    <TextBlock x:Name="LoadingProgressText" Text="0%" 
+                             Foreground="LightBlue" FontSize="11" FontWeight="Bold"
+                             HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

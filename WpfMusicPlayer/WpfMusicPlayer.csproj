@@ -9,6 +9,41 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="Resources\audio_separator_wrapper.py">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="AUDIO_SEPARATOR_INTEGRATION.md" />
+    <None Remove="AUDIO_SEPARATOR_MIGRATION.md" />
+    <None Remove="CLEANUP_SUMMARY.md" />
+    <None Remove="CRITICAL_FIX_APPLIED.md" />
+    <None Remove="FIXED_AND_READY.md" />
+    <None Remove="KARAOKE_TEST_GUIDE.md" />
+    <None Remove="README.md" />
+    <None Remove="Resources\CHECK_STATUS.bat" />
+    <None Remove="Resources\COMPLETE_AUTO_SETUP.bat" />
+    <None Remove="Resources\COMPLETE_SETUP.bat" />
+    <None Remove="Resources\FIXED_SETUP.bat" />
+    <None Remove="Resources\install_ffmpeg.bat" />
+    <None Remove="Resources\PORTABLE_SETUP.bat" />
+    <None Remove="Resources\PYINSTALLER_GUIDE.md" />
+    <None Remove="Resources\QUICK_FIX.bat" />
+    <None Remove="Resources\quick_setup.bat" />
+    <None Remove="Resources\setup_conda.bat" />
+    <None Remove="Resources\setup_ffmpeg_manual.bat" />
+    <None Remove="Resources\setup_python313.bat" />
+    <None Remove="Resources\SUPER_EASY_SETUP.bat" />
+    <None Remove="Resources\TARGETED_FIX.bat" />
+    <None Remove="Resources\test.txt" />
+    <None Remove="SPOTIFY_LIKE_IMPROVEMENTS.md" />
+    <None Remove="SUCCESS_GUIDE.md" />
+    <None Remove="TESTING_GUIDE.md" />
+    <None Remove="TROUBLESHOOTING.md" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="Microsoft.Toolkit.Mvvm" Version="7.1.2" />
