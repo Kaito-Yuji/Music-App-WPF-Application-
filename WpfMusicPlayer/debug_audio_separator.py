@@ -29,11 +29,18 @@ def test_audio_separator():
     
     # Test model loading
     try:
-        separator.load_model()
-        print("✓ Default model loaded successfully")
+        # Try a simpler, more reliable model first
+        separator.load_model(model_filename="UVR-MDX-NET-Inst_HQ_3.onnx")
+        print("✓ UVR-MDX-NET-Inst_HQ_3 model loaded successfully")
     except Exception as e:
-        print(f"✗ Failed to load model: {e}")
-        return False
+        print(f"✗ Failed to load UVR-MDX-NET-Inst_HQ_3 model: {e}")
+        try:
+            # Fallback to default model
+            separator.load_model()
+            print("✓ Default model loaded successfully")
+        except Exception as e2:
+            print(f"✗ Failed to load default model: {e2}")
+            return False
     
     print("✓ All tests passed - audio_separator is ready!")
     return True

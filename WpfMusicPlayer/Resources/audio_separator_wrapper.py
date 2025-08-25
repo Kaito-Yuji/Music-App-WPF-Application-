@@ -110,14 +110,18 @@ def main():
         # Load a model that can separate vocals and accompaniment
         # Check available models and use a simple approach
         try:
-            # Try to load a basic model for vocal separation
-            separator.load_model()  # Load default model
-            print("Default model loaded successfully")
-        except Exception as model_error:
-            print(f"Model loading issue: {model_error}")
-            # Try with specific model file
+            # Try to load the UVR-MDX-NET-Inst_HQ_3 model which is more reliable
             separator.load_model(model_filename="UVR-MDX-NET-Inst_HQ_3.onnx")
-            print("Specific model loaded successfully")
+            print("UVR-MDX-NET-Inst_HQ_3 model loaded successfully")
+        except Exception as model_error:
+            print(f"UVR-MDX-NET-Inst_HQ_3 model loading issue: {model_error}")
+            try:
+                # Fallback to default model
+                separator.load_model()  # Load default model
+                print("Default model loaded successfully")
+            except Exception as default_error:
+                print(f"Default model loading issue: {default_error}")
+                raise default_error
         
     except Exception as e:
         print(f"Error initializing Audio Separator: {e}", file=sys.stderr)
