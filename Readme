@@ -1,0 +1,30 @@
+# 🎵 Music App WPF Application  
+
+## 📖 Giới thiệu  
+
+Ứng dụng **Music App WPF Application** được xây dựng nhằm mang đến một trải nghiệm nghe nhạc thông minh và tiện lợi hơn so với các trình phát nhạc thông thường.  
+
+Thay vì chỉ dừng lại ở việc phát bài hát, ứng dụng còn được tích hợp **công nghệ AI** để phân tích và xử lý âm thanh. Người dùng có thể **tách giọng hát và nhạc nền** để tạo karaoke hoặc chỉ nghe phần beat, đồng thời ứng dụng còn có thể **nhận diện tâm trạng (mood) của bài hát** để gợi ý playlist phù hợp với cảm xúc.  
+
+Ứng dụng hướng đến việc trở thành một **người bạn đồng hành âm nhạc**, vừa để giải trí vừa để phục vụ nhu cầu học tập (hát karaoke, luyện thanh) và nghiên cứu âm nhạc.  
+
+---
+
+## ✨ Các tính năng chi tiết  
+
+### 🎤 1. Audio Splitter (AI) – Tách nhạc và lời  
+- Cho phép người dùng nhập vào một file nhạc (.mp3, .wav, …).  
+- Sử dụng AI để **tách giọng hát** và **nhạc nền** thành hai file riêng biệt.  
+- Ứng dụng các tình huống thực tế:  
+  - Tạo nhạc beat karaoke.  
+  - Luyện giọng và học hát chỉ với phần instrumental.  
+  - Trích xuất giọng ca sĩ để nghiên cứu âm sắc.  
+
+---
+
+### 🧠 2. Mood Detection (AI) – Nhận diện tâm trạng bài hát  
+- Phân tích đặc trưng âm thanh của bài hát bằng AI.  
+- Nhận diện **tâm trạng chính** mà bài hát mang lại, ví dụ:  
+  - Vui vẻ, năng lượng  
+  - Buồn, trầm lắng  
+ 
