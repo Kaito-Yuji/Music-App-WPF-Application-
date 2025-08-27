@@ -1,30 +1,77 @@
 # 🎵 Music App WPF Application  
 
-## 📖 Giới thiệu  
+## 📖 Introduction  
 
-Ứng dụng **Music App WPF Application** được xây dựng nhằm mang đến một trải nghiệm nghe nhạc thông minh và tiện lợi hơn so với các trình phát nhạc thông thường.  
+This project is a **Music Player Application** built with **C# WPF**.  
 
-Thay vì chỉ dừng lại ở việc phát bài hát, ứng dụng còn được tích hợp **công nghệ AI** để phân tích và xử lý âm thanh. Người dùng có thể **tách giọng hát và nhạc nền** để tạo karaoke hoặc chỉ nghe phần beat, đồng thời ứng dụng còn có thể **nhận diện tâm trạng (mood) của bài hát** để gợi ý playlist phù hợp với cảm xúc.  
+The purpose of this application is not only to play songs, but also to provide intelligent features powered by **AI**.  
 
-Ứng dụng hướng đến việc trở thành một **người bạn đồng hành âm nhạc**, vừa để giải trí vừa để phục vụ nhu cầu học tập (hát karaoke, luyện thanh) và nghiên cứu âm nhạc.  
+The app was created to help users interact with their music in new ways, such as splitting vocals from instrumentals and detecting the emotional mood of a song.  
 
----
-
-## ✨ Các tính năng chi tiết  
-
-### 🎤 1. Audio Splitter (AI) – Tách nhạc và lời  
-- Cho phép người dùng nhập vào một file nhạc (.mp3, .wav, …).  
-- Sử dụng AI để **tách giọng hát** và **nhạc nền** thành hai file riêng biệt.  
-- Ứng dụng các tình huống thực tế:  
-  - Tạo nhạc beat karaoke.  
-  - Luyện giọng và học hát chỉ với phần instrumental.  
-  - Trích xuất giọng ca sĩ để nghiên cứu âm sắc.  
+It aims to become more than just a normal player – it is designed as a companion for music lovers, karaoke fans, and learners who want to explore audio at a deeper level.  
 
 ---
 
-### 🧠 2. Mood Detection (AI) – Nhận diện tâm trạng bài hát  
-- Phân tích đặc trưng âm thanh của bài hát bằng AI.  
-- Nhận diện **tâm trạng chính** mà bài hát mang lại, ví dụ:  
-  - Vui vẻ, năng lượng  
-  - Buồn, trầm lắng  
- 
+## ✨ Features  
+
+### 🎤 Audio Splitter (AI) – Separate Vocals and Instrumentals  
+
+- The app allows the user to load a music file (such as `.mp3` or `.wav`).  
+
+- By using AI models, the application can **separate the vocals** and **the instrumental track** into two different files.  
+
+- This feature is useful in real situations:  
+  - Create a karaoke version of a song.  
+  - Practice singing with only the background instrumental.  
+  - Study the singer’s voice in isolation.  
+
+---
+
+### 🧠 Mood Detection (AI) – Identify Song Emotions  
+
+- The app analyzes the audio with AI to understand the **mood or emotion** of the song.  
+
+- It can detect categories such as:  
+  - Happy and energetic.  
+  - Sad and emotional.  
+  - Calm, relaxing, or “chill”.  
+
+- Benefits of this feature:  
+  - Helps users discover music based on their current feelings.  
+  - Supports automatic playlist generation by mood.  
+  - Makes the listening experience more personal and enjoyable.  
+
+---
+
+### 🎶 Music Player Core  
+
+- The app includes a simple but effective **music player**.  
+
+- Core functions:  
+  - Play, Pause, and Stop songs.  
+  - Manage playlists.  
+  - Provide a clean WPF interface for easy navigation.  
+
+---
+
+## 🛠️ Technologies Used  
+
+- **C# WPF (.NET)** → to build the main application interface.  
+
+- **Python AI Backend** → used for AI processing of audio.  
+
+- **Libraries for AI and Audio**:  
+  - `audio-separator`  
+  - `onnxruntime`  
+  - `librosa`  
+  - `musicnn`  
+
+- **FFmpeg** → to handle audio conversion and processing.  
+
+---
+
+## 🚀 Installation and Setup  
+
+1. Clone the repository:  
+   ```bash
+   git clone https://github.com/Kaito-Yuji/Music-App-WPF-Application-.git
