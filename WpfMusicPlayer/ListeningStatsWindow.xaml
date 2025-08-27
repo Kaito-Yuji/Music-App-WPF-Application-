@@ -36,8 +36,7 @@
                     </Border>
 
                     <!-- Weekend Top Songs -->
-                    <ListView x:Name="WeekendSongsList" Grid.Row="1" Background="#FF3E3E42" BorderThickness="0" Foreground="White"
-                              Style="{StaticResource CustomListViewStyle}">
+                    <ListView x:Name="WeekendSongsList" Grid.Row="1" Background="#FF3E3E42" BorderThickness="0" Foreground="White">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="Rank" Width="60">
@@ -97,8 +96,7 @@
                     </Border>
 
                     <!-- Monthly Top Songs -->
-                    <ListView x:Name="MonthlySongsList" Grid.Row="1" Background="#FF3E3E42" BorderThickness="0" Foreground="White"
-                              Style="{StaticResource CustomListViewStyle}">
+                    <ListView x:Name="MonthlySongsList" Grid.Row="1" Background="#FF3E3E42" BorderThickness="0" Foreground="White">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="Rank" Width="60">
@@ -158,8 +156,7 @@
                     </Border>
 
                     <!-- All Time Top Songs -->
-                    <ListView x:Name="AllTimeSongsList" Grid.Row="1" Background="#FF3E3E42" BorderThickness="0" Foreground="White"
-                              Style="{StaticResource CustomListViewStyle}">
+                    <ListView x:Name="AllTimeSongsList" Grid.Row="1" Background="#FF3E3E42" BorderThickness="0" Foreground="White">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="Rank" Width="60">
