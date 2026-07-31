@@ -1,0 +1,27 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    # WPF targets net8.0-windows, so this cannot run on the Linux runners
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore WpfMusicPlayer/WpfMusicPlayer.sln
+
+      - name: Build
+        run: dotnet build WpfMusicPlayer/WpfMusicPlayer.sln --configuration Release --no-restore

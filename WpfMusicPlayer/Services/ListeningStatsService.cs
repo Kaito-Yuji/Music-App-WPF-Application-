@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -7,73 +8,107 @@ using WpfMusicPlayer.Models;
 
 namespace WpfMusicPlayer.Services
 {
-    public class ListeningStatsService
+    /// <summary>
+    /// Single source of truth for "how much has this song been listened to".
+    /// A play is counted once the listener passes <see cref="CompletionThreshold"/> of the track.
+    /// </summary>
+    public class ListeningStatsService : IListeningStatsService
     {
+        public const double CompletionThreshold = 0.75;
+
+        /// <summary>
+        /// Largest gap that still counts as continuous listening. The position timer ticks every
+        /// 100 ms, so anything much larger means the app was paused, minimised or the machine
+        /// was asleep - crediting that time would inflate the statistics.
+        /// </summary>
+        private static readonly TimeSpan MaxCreditPerUpdate = TimeSpan.FromSeconds(1);
+
         private readonly string _statsFilePath;
         private readonly List<SongListeningRecord> _listeningRecords;
-        private DateTime _currentSessionStart;
-        private string _currentSongId = string.Empty;
-        private TimeSpan _currentSongSessionTime = TimeSpan.Zero;
-        private bool _currentSongMarkedAs75Percent = false;
+        private readonly Dictionary<string, int> _playCounts;
 
-        public ListeningStatsService()
+        // Monotonic clock: immune to the wall clock being adjusted mid-session
+        private readonly Stopwatch _clock = Stopwatch.StartNew();
+
+        private string _currentFilePath = string.Empty;
+        private TimeSpan _lastUpdate;
+        private TimeSpan _currentSongSessionTime;
+        private bool _currentSongCompleted;
+
+        /// <summary>
+        /// Raised the moment a song crosses the completion threshold, carrying its file path.
+        /// </summary>
+        public event EventHandler<string>? PlayCounted;
+
+        /// <param name="statsFilePath">
+        /// Where records are stored. Defaults to the file under %APPDATA%; pass an explicit path
+        /// to keep a separate history, for example when trying something out.
+        /// </param>
+        public ListeningStatsService(string? statsFilePath = null)
         {
-            // Initialize stats file path
-            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var appFolder = Path.Combine(appDataPath, "WpfMusicPlayer");
-            Directory.CreateDirectory(appFolder);
-            _statsFilePath = Path.Combine(appFolder, "listening_stats.json");
+            if (statsFilePath != null)
+            {
+                _statsFilePath = statsFilePath;
+            }
+            else
+            {
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var appFolder = Path.Combine(appDataPath, "WpfMusicPlayer");
+                Directory.CreateDirectory(appFolder);
+                _statsFilePath = Path.Combine(appFolder, "listening_stats.json");
+            }
 
             _listeningRecords = LoadStatsFromFile();
+            _playCounts = BuildPlayCounts(_listeningRecords);
         }
 
         #region Public Methods
 
         /// <summary>
-        /// Call this when a song starts playing
+        /// Call this every time playback of a track begins - including replays of the same track,
+        /// so that repeat-one sessions are counted separately.
         /// </summary>
         public void OnSongStarted(Song song)
         {
-            // Save any previous session
             SaveCurrentSession();
 
-            // Start new session
-            _currentSongId = song.Id;
-            _currentSessionStart = DateTime.Now;
+            _currentFilePath = song.FilePath;
+            _lastUpdate = _clock.Elapsed;
             _currentSongSessionTime = TimeSpan.Zero;
-            _currentSongMarkedAs75Percent = false;
+            _currentSongCompleted = false;
         }
 
         /// <summary>
-        /// Call this periodically (from the position timer) to track listening progress
+        /// Call this from the position timer to track listening progress.
         /// </summary>
-        public void OnPositionUpdate(Song currentSong, TimeSpan currentPosition, TimeSpan totalDuration)
+        public void OnPositionUpdate(Song? currentSong, TimeSpan currentPosition, TimeSpan totalDuration)
         {
-            if (currentSong?.Id != _currentSongId || totalDuration == TimeSpan.Zero)
+            if (currentSong == null || totalDuration <= TimeSpan.Zero)
                 return;
 
-            var now = DateTime.Now;
-            var sessionDuration = now - _currentSessionStart;
-            
-            // Only count if the session is reasonable (not seeking or paused for too long)
-            if (sessionDuration <= TimeSpan.FromMinutes(1)) // Allow up to 1 minute of real-time per update
-            {
-                _currentSongSessionTime += TimeSpan.FromMilliseconds(100); // Timer interval
-            }
+            if (!PathEquals(currentSong.FilePath, _currentFilePath))
+                return;
 
-            // Check if we've reached 75% of the song
-            var progressPercent = currentPosition.TotalSeconds / totalDuration.TotalSeconds;
-            if (progressPercent >= 0.75 && !_currentSongMarkedAs75Percent)
-            {
-                _currentSongMarkedAs75Percent = true;
-                // This will be recorded when the session ends
-            }
+            var now = _clock.Elapsed;
+            var elapsed = now - _lastUpdate;
+            _lastUpdate = now;
 
-            _currentSessionStart = now;
+            if (elapsed > TimeSpan.Zero && elapsed <= MaxCreditPerUpdate)
+                _currentSongSessionTime += elapsed;
+
+            if (_currentSongCompleted)
+                return;
+
+            var progress = currentPosition.TotalSeconds / totalDuration.TotalSeconds;
+            if (progress >= CompletionThreshold)
+            {
+                _currentSongCompleted = true;
+                PlayCounted?.Invoke(this, _currentFilePath);
+            }
         }
 
         /// <summary>
-        /// Call this when a song stops, changes, or the app closes
+        /// Call this when playback stops, the track changes, or the app closes.
         /// </summary>
         public void OnSongStopped()
         {
@@ -81,16 +116,27 @@ namespace WpfMusicPlayer.Services
         }
 
         /// <summary>
-        /// Get weekend statistics (Saturday and Sunday of current week)
+        /// Number of completed plays recorded for a file, across all time.
+        /// </summary>
+        public int GetPlayCount(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+                return 0;
+
+            return _playCounts.TryGetValue(Normalise(filePath), out var count) ? count : 0;
+        }
+
+        /// <summary>
+        /// Weekend statistics (Saturday and Sunday of the current week).
         /// </summary>
         public PeriodStatistics GetWeekendStats()
         {
             var now = DateTime.Now;
-            var weekStart = now.Date.AddDays(-(int)now.DayOfWeek); // Start of current week (Sunday)
-            var weekendStart = weekStart.AddDays(6); // Saturday
-            var weekendEnd = weekStart.AddDays(7).AddTicks(-1); // End of Sunday
+            var weekStart = now.Date.AddDays(-(int)now.DayOfWeek);
+            var weekendStart = weekStart.AddDays(6);
+            var weekendEnd = weekStart.AddDays(7).AddTicks(-1);
 
-            // If it's not weekend yet, get last weekend
+            // Before the weekend arrives, report the most recent one
             if (now.DayOfWeek != DayOfWeek.Saturday && now.DayOfWeek != DayOfWeek.Sunday)
             {
                 weekendStart = weekendStart.AddDays(-7);
@@ -101,7 +147,7 @@ namespace WpfMusicPlayer.Services
         }
 
         /// <summary>
-        /// Get monthly statistics for the current month
+        /// Statistics for the current calendar month.
         /// </summary>
         public PeriodStatistics GetMonthlyStats()
         {
@@ -113,11 +159,11 @@ namespace WpfMusicPlayer.Services
         }
 
         /// <summary>
-        /// Get all-time statistics
+        /// All-time statistics.
         /// </summary>
         public PeriodStatistics GetAllTimeStats()
         {
-            if (!_listeningRecords.Any())
+            if (_listeningRecords.Count == 0)
             {
                 return new PeriodStatistics
                 {
@@ -139,24 +185,30 @@ namespace WpfMusicPlayer.Services
 
         private void SaveCurrentSession()
         {
-            if (string.IsNullOrEmpty(_currentSongId) || _currentSongSessionTime == TimeSpan.Zero)
+            if (string.IsNullOrEmpty(_currentFilePath) || _currentSongSessionTime == TimeSpan.Zero)
                 return;
 
             var record = new SongListeningRecord
             {
-                SongId = _currentSongId,
+                FilePath = _currentFilePath,
                 ListenDate = DateTime.Now,
                 ListenDuration = _currentSongSessionTime,
-                CompletedAt75Percent = _currentSongMarkedAs75Percent
+                CompletedAt75Percent = _currentSongCompleted
             };
 
             _listeningRecords.Add(record);
+
+            if (record.CompletedAt75Percent)
+            {
+                var key = Normalise(record.FilePath);
+                _playCounts[key] = _playCounts.TryGetValue(key, out var count) ? count + 1 : 1;
+            }
+
             SaveStatsToFile();
 
-            // Reset session
-            _currentSongId = string.Empty;
+            _currentFilePath = string.Empty;
             _currentSongSessionTime = TimeSpan.Zero;
-            _currentSongMarkedAs75Percent = false;
+            _currentSongCompleted = false;
         }
 
         private PeriodStatistics GetStatsForPeriod(DateTime start, DateTime end, string periodName)
@@ -166,10 +218,10 @@ namespace WpfMusicPlayer.Services
                 .ToList();
 
             var songStats = periodRecords
-                .GroupBy(r => r.SongId)
+                .GroupBy(r => Normalise(r.FilePath))
                 .Select(g => new SongStatistics
                 {
-                    SongId = g.Key,
+                    FilePath = g.First().FilePath,
                     TotalPlays = g.Count(r => r.CompletedAt75Percent),
                     TotalListeningTime = TimeSpan.FromTicks(g.Sum(r => r.ListenDuration.Ticks)),
                     LastPlayed = g.Max(r => r.ListenDate),
@@ -190,6 +242,19 @@ namespace WpfMusicPlayer.Services
             };
         }
 
+        private static Dictionary<string, int> BuildPlayCounts(IEnumerable<SongListeningRecord> records)
+        {
+            return records
+                .Where(r => r.CompletedAt75Percent && !string.IsNullOrEmpty(r.FilePath))
+                .GroupBy(r => Normalise(r.FilePath))
+                .ToDictionary(g => g.Key, g => g.Count());
+        }
+
+        private static string Normalise(string filePath) => filePath.ToLowerInvariant();
+
+        private static bool PathEquals(string left, string right) =>
+            string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+
         private void SaveStatsToFile()
         {
             try
@@ -202,7 +267,7 @@ namespace WpfMusicPlayer.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error saving listening stats: {ex.Message}");
+                Debug.WriteLine($"Error saving listening stats: {ex.Message}");
             }
         }
 
@@ -214,30 +279,17 @@ namespace WpfMusicPlayer.Services
                     return new List<SongListeningRecord>();
 
                 var json = File.ReadAllText(_statsFilePath);
-                return JsonSerializer.Deserialize<List<SongListeningRecord>>(json) ?? new List<SongListeningRecord>();
+                var records = JsonSerializer.Deserialize<List<SongListeningRecord>>(json)
+                              ?? new List<SongListeningRecord>();
+
+                // Records written before stats were keyed by path carry no file path and can
+                // never be matched to a song again, so drop them rather than showing blanks.
+                return records.Where(r => !string.IsNullOrEmpty(r.FilePath)).ToList();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading listening stats: {ex.Message}");
+                Debug.WriteLine($"Error loading listening stats: {ex.Message}");
                 return new List<SongListeningRecord>();
-            }
-        }
-
-        /// <summary>
-        /// Update song metadata in statistics (call when songs are loaded)
-        /// </summary>
-        public void UpdateSongMetadata(IEnumerable<Song> songs)
-        {
-            var songDict = songs.ToDictionary(s => s.Id, s => s);
-
-            foreach (var stats in GetAllTimeStats().TopSongs)
-            {
-                if (songDict.TryGetValue(stats.SongId, out var song))
-                {
-                    stats.SongTitle = song.Title;
-                    stats.Artist = song.Artist;
-                    stats.FilePath = song.FilePath;
-                }
             }
         }
 

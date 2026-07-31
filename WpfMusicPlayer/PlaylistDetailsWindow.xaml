@@ -7,11 +7,12 @@
         Background="#121212"
         BorderBrush="#2d2d30"
         BorderThickness="1"
-        WindowStyle="None">
+        WindowStyle="SingleBorderWindow">
 
     <Window.Resources>
         <converters:ByteArrayToImageConverter x:Key="ByteArrayToImageConverter"/>
         <converters:ListViewItemIndexConverter x:Key="ListViewItemIndexConverter"/>
+        <converters:EmptyStringToVisibilityConverter x:Key="EmptyStringToVisibilityConverter"/>
 
         <Style x:Key="ModernButton" TargetType="Button">
             <Setter Property="Background" Value="#2d2d30"/>
@@ -96,34 +97,34 @@
                 <!-- Playlist Cover -->
                 <Border Grid.Column="0" Background="#404040" Width="120" Height="120" 
                         CornerRadius="5" Margin="0,0,20,0">
-                    <Image Source="{Binding CoverImage, Converter={StaticResource ByteArrayToImageConverter}}"
+                    <Image Source="{Binding Playlist.CoverImage, Converter={StaticResource ByteArrayToImageConverter}}"
                            Stretch="UniformToFill"/>
                 </Border>
 
                 <!-- Playlist Info -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock x:Name="PlaylistNameText" Text="{Binding Name}" 
+                    <TextBlock Text="{Binding Playlist.Name}" 
                                Foreground="White" FontSize="24" FontWeight="Bold" Margin="0,0,0,5"/>
-                    <TextBlock x:Name="PlaylistDescriptionText" Text="{Binding Description}" 
+                    <TextBlock Text="{Binding Playlist.Description}" 
                                Foreground="Gray" FontSize="14" TextWrapping="Wrap" Margin="0,0,0,10"/>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding SongCount}" Foreground="Gray" FontSize="12"/>
+                        <TextBlock Text="{Binding Playlist.SongCount}" Foreground="Gray" FontSize="12"/>
                         <TextBlock Text=" songs • " Foreground="Gray" FontSize="12"/>
-                        <TextBlock Text="{Binding TotalDurationText}" Foreground="Gray" FontSize="12"/>
+                        <TextBlock Text="{Binding Playlist.TotalDurationText}" Foreground="Gray" FontSize="12"/>
                     </StackPanel>
                 </StackPanel>
 
                 <!-- Action Buttons -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="PlayAllButton" Content="▶️ Play All" 
-                            Style="{StaticResource ModernButton}" 
-                            Background="#1db954" Click="PlayAllButton_Click" Height="30" Width="65"/>
-                    <Button x:Name="EditPlaylistButton" Content="✏️ Edit" 
-                            Style="{StaticResource ModernButton}" 
-                            Click="EditPlaylistButton_Click" Width="55"/>
-                    <Button x:Name="CloseButton" Content="❌ Close" 
-                            Style="{StaticResource ModernButton}" 
-                            Click="CloseButton_Click" Width="60"/>
+                    <Button Content="▶️ Play All"
+                            Style="{StaticResource ModernButton}"
+                            Background="#1db954" Command="{Binding PlayAllCommand}" Height="30" Width="80"/>
+                    <Button Content="✏️ Edit"
+                            Style="{StaticResource ModernButton}"
+                            Command="{Binding EditPlaylistCommand}" Width="60"/>
+                    <Button Content="❌ Close"
+                            Style="{StaticResource ModernButton}"
+                            Click="CloseButton_Click" Width="65" IsCancel="True"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -135,22 +136,27 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBox x:Name="SearchTextBox" Grid.Column="0"
-                         Background="#404040" Foreground="White" BorderThickness="0"
-                         Padding="10" FontSize="14" 
-                         TextChanged="SearchTextBox_TextChanged"
-                         Text="Search in playlist..."/>
-                <Button x:Name="AddSongsButton" Content="➕ Add Songs"
+                <Grid Grid.Column="0">
+                    <TextBox Background="#404040" Foreground="White" BorderThickness="0"
+                             Padding="10" FontSize="14"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Text="Search in playlist..." Foreground="#909090" FontSize="14"
+                               Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                               Visibility="{Binding SearchText, Converter={StaticResource EmptyStringToVisibilityConverter}}"/>
+                </Grid>
+                <Button Grid.Column="1" Content="➕ Add Songs"
                         Style="{StaticResource ModernButton}"
-                        Background="#1db954" Click="AddSongsButton_Click" Grid.ColumnSpan="2" Margin="855,5,5,5"/>
+                        Background="#1db954" Command="{Binding AddSongsCommand}" Padding="12,5"/>
             </Grid>
         </Border>
 
         <!-- Songs List -->
-        <ListView x:Name="PlaylistSongsListView" Grid.Row="2" 
+        <ListView x:Name="PlaylistSongsListView" Grid.Row="2"
                   Background="Transparent" Foreground="White"
-                  Margin="10,0,10,10" MouseDoubleClick="PlaylistSongsListView_MouseDoubleClick"
+                  Margin="10,0,10,10"
                   BorderThickness="0"
+                  ItemsSource="{Binding Songs}"
+                  MouseDoubleClick="PlaylistSongsListView_MouseDoubleClick"
                   Style="{StaticResource CustomListViewStyle}">
             <ListView.View>
                 <GridView ColumnHeaderContainerStyle="{StaticResource GridViewColumnHeaderStyle}">
@@ -212,7 +218,7 @@
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="Views" Width="70">
+                    <GridViewColumn Header="Plays" Width="70">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding ViewCount}" Foreground="Gray" HorizontalAlignment="Center"/>
@@ -224,10 +230,10 @@
                             <DataTemplate>
                                 <Button Content="🗑️" Style="{StaticResource ModernButton}"
                                         Width="30" Height="25" Padding="0"
-                                        Click="RemoveFromPlaylistButton_Click"
-                                        Tag="{Binding}"
-                                        ToolTip="Remove from Playlist"
-                                        />
+                                        ToolTip="Remove from playlist"
+                                        Command="{Binding DataContext.RemoveSongCommand,
+                                                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}"/>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
@@ -259,7 +265,7 @@
 
         <!-- Status Bar -->
         <Border Grid.Row="3" Background="#181818" Padding="10">
-            <TextBlock x:Name="StatusText" Text="Ready" Foreground="Gray" FontSize="12"/>
+            <TextBlock Text="{Binding StatusText}" Foreground="Gray" FontSize="12"/>
         </Border>
     </Grid>
 </Window>

@@ -14,7 +14,7 @@
         <Border Grid.Row="0" Background="#FF2D2D30" Padding="20,15">
             <StackPanel>
                 <TextBlock Text="Listening Statistics" FontSize="24" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
-                <TextBlock x:Name="PeriodText" FontSize="14" Foreground="#FFCCCCCC" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                <TextBlock Text="A play is counted once you pass 75% of a track" FontSize="12" Foreground="#FFCCCCCC" HorizontalAlignment="Center" Margin="0,5,0,0"/>
             </StackPanel>
         </Border>
 
@@ -30,13 +30,13 @@
                     <!-- Weekend Summary -->
                     <Border Grid.Row="0" Background="#FF404040" Padding="15" Margin="0,0,0,15" CornerRadius="5">
                         <StackPanel>
-                            <TextBlock x:Name="WeekendSummaryText" FontSize="16" Foreground="White" FontWeight="Bold"/>
-                            <TextBlock x:Name="WeekendTimeText" FontSize="14" Foreground="#FFCCCCCC" Margin="0,5,0,0"/>
+                            <TextBlock Text="{Binding WeekendSummary}" FontSize="16" Foreground="White" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding WeekendTime}" FontSize="14" Foreground="#FFCCCCCC" Margin="0,5,0,0"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Weekend Top Songs -->
-                    <ListView x:Name="WeekendSongsList" Grid.Row="1" Background="#FF3E3E42" BorderThickness="0" Foreground="White"
+                    <ListView ItemsSource="{Binding WeekendSongs}" Grid.Row="1" Background="#FF3E3E42" BorderThickness="0" Foreground="White"
                               Style="{StaticResource CustomListViewStyle}">
                         <ListView.View>
                             <GridView>
@@ -91,13 +91,13 @@
                     <!-- Monthly Summary -->
                     <Border Grid.Row="0" Background="#FF404040" Padding="15" Margin="0,0,0,15" CornerRadius="5">
                         <StackPanel>
-                            <TextBlock x:Name="MonthlySummaryText" FontSize="16" Foreground="White" FontWeight="Bold"/>
-                            <TextBlock x:Name="MonthlyTimeText" FontSize="14" Foreground="#FFCCCCCC" Margin="0,5,0,0"/>
+                            <TextBlock Text="{Binding MonthlySummary}" FontSize="16" Foreground="White" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding MonthlyTime}" FontSize="14" Foreground="#FFCCCCCC" Margin="0,5,0,0"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Monthly Top Songs -->
-                    <ListView x:Name="MonthlySongsList" Grid.Row="1" Background="#FF3E3E42" BorderThickness="0" Foreground="White"
+                    <ListView ItemsSource="{Binding MonthlySongs}" Grid.Row="1" Background="#FF3E3E42" BorderThickness="0" Foreground="White"
                               Style="{StaticResource CustomListViewStyle}">
                         <ListView.View>
                             <GridView>
@@ -152,13 +152,13 @@
                     <!-- All Time Summary -->
                     <Border Grid.Row="0" Background="#FF404040" Padding="15" Margin="0,0,0,15" CornerRadius="5">
                         <StackPanel>
-                            <TextBlock x:Name="AllTimeSummaryText" FontSize="16" Foreground="White" FontWeight="Bold"/>
-                            <TextBlock x:Name="AllTimeTimeText" FontSize="14" Foreground="#FFCCCCCC" Margin="0,5,0,0"/>
+                            <TextBlock Text="{Binding AllTimeSummary}" FontSize="16" Foreground="White" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding AllTimeTime}" FontSize="14" Foreground="#FFCCCCCC" Margin="0,5,0,0"/>
                         </StackPanel>
                     </Border>
 
                     <!-- All Time Top Songs -->
-                    <ListView x:Name="AllTimeSongsList" Grid.Row="1" Background="#FF3E3E42" BorderThickness="0" Foreground="White"
+                    <ListView ItemsSource="{Binding AllTimeSongs}" Grid.Row="1" Background="#FF3E3E42" BorderThickness="0" Foreground="White"
                               Style="{StaticResource CustomListViewStyle}">
                         <ListView.View>
                             <GridView>
@@ -207,8 +207,8 @@
         <!-- Footer -->
         <Border Grid.Row="2" Background="#FF2D2D30" Padding="15">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <Button x:Name="RefreshButton" Content="Refresh" Width="100" Height="30" Margin="5" Click="RefreshButton_Click"/>
-                <Button x:Name="CloseButton" Content="Close" Width="100" Height="30" Margin="5" Click="CloseButton_Click"/>
+                <Button Content="Refresh" Width="100" Height="30" Margin="5" Command="{Binding RefreshCommand}"/>
+                <Button Content="Close" Width="100" Height="30" Margin="5" Click="CloseButton_Click" IsCancel="True"/>
             </StackPanel>
         </Border>
     </Grid>

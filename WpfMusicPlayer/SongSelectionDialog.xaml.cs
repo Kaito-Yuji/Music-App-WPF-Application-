@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using WpfMusicPlayer.Models;
@@ -7,97 +9,59 @@ namespace WpfMusicPlayer
 {
     public partial class SongSelectionDialog : Window
     {
-        private readonly ObservableCollection<Song> _filteredSongs;
-        private readonly IEnumerable<Song> _playlistSongs;
-        
-        public List<Song> SelectedSongs { get; private set; } = new List<Song>();
+        /// <summary>
+        /// Every song that may be added. Searching always filters this list rather than the
+        /// previous result, so clearing the box brings the full set back.
+        /// </summary>
+        private readonly List<Song> _availableSongs;
 
-        public SongSelectionDialog(IEnumerable<Song> allSongs, IEnumerable<Song> playlistSongs)
+        public SongSelectionDialog(IEnumerable<Song> allSongs, IEnumerable<Song> alreadyIncluded)
         {
             InitializeComponent();
-            
-            _filteredSongs = new ObservableCollection<Song>();
-            _playlistSongs = playlistSongs;
-            
-            SongsListView.ItemsSource = _filteredSongs;
-            SongsListView.SelectionChanged += SongsListView_SelectionChanged;
-            
-            LoadSongs(allSongs);
-            InitializeSearch();
+
+            var excluded = new HashSet<Song>(alreadyIncluded);
+            _availableSongs = allSongs.Where(song => !excluded.Contains(song)).ToList();
+
+            SongsListView.ItemsSource = FilteredSongs;
+            SongsListView.SelectionChanged += (_, _) => UpdateStatusText();
+
+            ApplyFilter();
         }
 
-        private void LoadSongs(IEnumerable<Song> songs)
+        public ObservableCollection<Song> FilteredSongs { get; } = new();
+
+        public List<Song> SelectedSongs { get; private set; } = new();
+
+        private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            _filteredSongs.Clear();
-            
-            foreach (var song in songs)
-            {
-                if (!_playlistSongs.Contains(song))
-                {
-                    _filteredSongs.Add(song);
-                }
-            }
-            
+            ApplyFilter();
+        }
+
+        private void ApplyFilter()
+        {
+            var query = SearchTextBox?.Text?.Trim().ToLowerInvariant() ?? string.Empty;
+
+            var matches = string.IsNullOrEmpty(query)
+                ? _availableSongs
+                : _availableSongs.Where(s =>
+                    s.Title.ToLowerInvariant().Contains(query) ||
+                    s.Artist.ToLowerInvariant().Contains(query) ||
+                    s.Album.ToLowerInvariant().Contains(query)).ToList();
+
+            FilteredSongs.Clear();
+            foreach (var song in matches)
+                FilteredSongs.Add(song);
+
             UpdateStatusText();
-        }
-
-        private void InitializeSearch()
-        {
-            SearchTextBox.GotFocus += (s, e) =>
-            {
-                if (SearchTextBox.Text == "Search songs...")
-                    SearchTextBox.Text = "";
-            };
-
-            SearchTextBox.LostFocus += (s, e) =>
-            {
-                if (string.IsNullOrWhiteSpace(SearchTextBox.Text))
-                    SearchTextBox.Text = "Search songs...";
-            };
         }
 
         private void UpdateStatusText()
         {
-            var selectedCount = SongsListView.SelectedItems.Count;
-            StatusTextBlock.Text = $"{selectedCount} songs selected ({_filteredSongs.Count} available)";
-        }
-
-        private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (SearchTextBox.Text == "Search songs...")
+            if (StatusTextBlock == null)
                 return;
 
-            var currentSongs = _filteredSongs.ToList(); // Store current filtered songs
-            _filteredSongs.Clear();
-            
-            if (string.IsNullOrWhiteSpace(SearchTextBox.Text))
-            {
-                // Show all available songs (not already in playlist)
-                foreach (var song in currentSongs)
-                {
-                    _filteredSongs.Add(song);
-                }
-            }
-            else
-            {
-                var query = SearchTextBox.Text.ToLowerInvariant();
-                var filteredResults = currentSongs.Where(s =>
-                    s.Title.ToLowerInvariant().Contains(query) ||
-                    s.Artist.ToLowerInvariant().Contains(query) ||
-                    s.Album.ToLowerInvariant().Contains(query));
-                
-                foreach (var song in filteredResults)
-                {
-                    _filteredSongs.Add(song);
-                }
-            }
-            
-            UpdateStatusText();
-        }
-
-        private void SongsListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            UpdateStatusText();
+            StatusTextBlock.Text =
+                $"{SongsListView.SelectedItems.Count} songs selected ({FilteredSongs.Count} available)";
         }
 
         private void SelectAllButton_Click(object sender, RoutedEventArgs e)

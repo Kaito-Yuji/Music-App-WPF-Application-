@@ -1,225 +1,65 @@
-using System.Collections.ObjectModel;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using WpfMusicPlayer.Models;
-using WpfMusicPlayer.Services;
+using WpfMusicPlayer.ViewModels;
 
 namespace WpfMusicPlayer
 {
     public partial class PlaylistDetailsWindow : Window
     {
-        private readonly Playlist _playlist;
-        private readonly MusicService _musicService;
-        private readonly ObservableCollection<Song> _filteredSongs;
+        private readonly PlaylistDetailsViewModel _viewModel;
 
-        public PlaylistDetailsWindow(Playlist playlist, MusicService musicService)
+        public PlaylistDetailsWindow(PlaylistDetailsViewModel viewModel)
         {
             InitializeComponent();
-            
-            _playlist = playlist;
-            _musicService = musicService;
-            _filteredSongs = new ObservableCollection<Song>();
 
-            InitializeWindow();
-        }
+            _viewModel = viewModel;
+            DataContext = viewModel;
 
-        private void InitializeWindow()
-        {
-            DataContext = _playlist;
-            PlaylistSongsListView.ItemsSource = _filteredSongs;
-            
-            RefreshSongsList();
-            
-            SearchTextBox.GotFocus += (s, e) =>
-            {
-                if (SearchTextBox.Text == "Search in playlist...")
-                    SearchTextBox.Text = "";
-            };
-
-            SearchTextBox.LostFocus += (s, e) =>
-            {
-                if (string.IsNullOrWhiteSpace(SearchTextBox.Text))
-                    SearchTextBox.Text = "Search in playlist...";
-            };
-
-            // Add responsive column sizing
-            SizeChanged += PlaylistDetailsWindow_SizeChanged;
-            Loaded += PlaylistDetailsWindow_Loaded;
-        }
-
-        private void PlaylistDetailsWindow_Loaded(object sender, RoutedEventArgs e)
-        {
-            UpdateColumnWidths();
-        }
-
-        private void PlaylistDetailsWindow_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            UpdateColumnWidths();
+            Loaded += (_, _) => UpdateColumnWidths();
+            SizeChanged += (_, _) => UpdateColumnWidths();
         }
 
         private void UpdateColumnWidths()
         {
-            if (PlaylistSongsListView?.View is GridView gridView && gridView.Columns.Count >= 8)
-            {
-                var availableWidth = PlaylistSongsListView.ActualWidth - 40; // Account for scrollbar and padding
-                
-                if (availableWidth > 0)
-                {
-                    // Fixed width columns
-                    var numberWidth = 40;
-                    var coverWidth = 80;
-                    var durationWidth = 80;
-                    var viewsWidth = 70;
-                    var actionsWidth = 80;
-                    
-                    // Calculate remaining width for flexible columns
-                    var remainingWidth = availableWidth - numberWidth - coverWidth - durationWidth - viewsWidth - actionsWidth;
-                    
-                    if (remainingWidth > 300) // Ensure minimum width for text columns
-                    {
-                        // Distribute remaining width: Title gets 40%, Artist and Album get 30% each
-                        var titleWidth = Math.Max(150, remainingWidth * 0.4);
-                        var artistWidth = Math.Max(120, remainingWidth * 0.3);
-                        var albumWidth = Math.Max(120, remainingWidth * 0.3);
-                        
-                        // Set the widths
-                        gridView.Columns[0].Width = numberWidth;   // #
-                        gridView.Columns[1].Width = coverWidth;   // Cover
-                        gridView.Columns[2].Width = titleWidth;   // Title
-                        gridView.Columns[3].Width = artistWidth;  // Artist
-                        gridView.Columns[4].Width = albumWidth;   // Album
-                        gridView.Columns[5].Width = durationWidth; // Duration
-                        gridView.Columns[6].Width = viewsWidth;   // Views
-                        gridView.Columns[7].Width = actionsWidth; // Actions
-                    }
-                }
-            }
-        }
-
-        private void RefreshSongsList()
-        {
-            _filteredSongs.Clear();
-            foreach (var song in _playlist.Songs)
-            {
-                _filteredSongs.Add(song);
-            }
-            UpdateStatusText();
-        }
-
-        private void UpdateStatusText()
-        {
-            StatusText.Text = $"{_filteredSongs.Count} songs displayed";
-        }
-
-        private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (SearchTextBox.Text == "Search in playlist...")
+            if (PlaylistSongsListView?.View is not GridView gridView || gridView.Columns.Count < 8)
                 return;
 
-            _filteredSongs.Clear();
-            
-            if (string.IsNullOrWhiteSpace(SearchTextBox.Text))
-            {
-                foreach (var song in _playlist.Songs)
-                    _filteredSongs.Add(song);
-            }
-            else
-            {
-                var query = SearchTextBox.Text.ToLowerInvariant();
-                foreach (var song in _playlist.Songs.Where(s =>
-                    s.Title.ToLowerInvariant().Contains(query) ||
-                    s.Artist.ToLowerInvariant().Contains(query) ||
-                    s.Album.ToLowerInvariant().Contains(query)))
-                {
-                    _filteredSongs.Add(song);
-                }
-            }
-            
-            UpdateStatusText();
-        }
+            var availableWidth = PlaylistSongsListView.ActualWidth - 40;
+            if (availableWidth <= 0)
+                return;
 
-        private void PlayAllButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_filteredSongs.Count > 0)
-            {
-                _musicService.SetQueue(_filteredSongs, 0);
-                _musicService.PlaySongAtIndex(0);
-                StatusText.Text = "Playing playlist...";
-            }
-        }
+            const double numberWidth = 40;
+            const double coverWidth = 80;
+            const double durationWidth = 80;
+            const double playsWidth = 70;
+            const double actionsWidth = 80;
 
-        private void EditPlaylistButton_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new PlaylistNameDialog
-            {
-                PlaylistName = _playlist.Name,
-                PlaylistDescription = _playlist.Description
-            };
-            
-            if (dialog.ShowDialog() == true)
-            {
-                _playlist.Name = dialog.PlaylistName;
-                _playlist.Description = dialog.PlaylistDescription;
-                if (dialog.PlaylistCover != null)
-                {
-                    _playlist.CoverImage = dialog.PlaylistCover;
-                }
-                
-                // Save the playlist changes
-                _musicService.UpdatePlaylist(_playlist);
-                
-                // Refresh the display
-                PlaylistNameText.Text = _playlist.Name;
-                PlaylistDescriptionText.Text = _playlist.Description;
-                Title = $"Playlist: {_playlist.Name}";
-                StatusText.Text = "Playlist updated";
-            }
-        }
+            var remainingWidth = availableWidth - numberWidth - coverWidth - durationWidth - playsWidth - actionsWidth;
+            if (remainingWidth <= 300)
+                return;
 
-        private void AddSongsButton_Click(object sender, RoutedEventArgs e)
-        {
-            var songSelectionDialog = new SongSelectionDialog(_musicService.Songs, _playlist.Songs);
-            if (songSelectionDialog.ShowDialog() == true)
-            {
-                foreach (var song in songSelectionDialog.SelectedSongs)
-                {
-                    _musicService.AddSongToPlaylist(_playlist, song);
-                }
-                RefreshSongsList();
-                StatusText.Text = $"Added {songSelectionDialog.SelectedSongs.Count} songs to playlist";
-            }
-        }
-
-        private void RemoveFromPlaylistButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button button && button.Tag is Song song)
-            {
-                var result = MessageBox.Show($"Remove '{song.Title}' from this playlist?", 
-                    "Confirm Remove", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                
-                if (result == MessageBoxResult.Yes)
-                {
-                    _musicService.RemoveSongFromPlaylist(_playlist, song);
-                    RefreshSongsList();
-                    StatusText.Text = "Song removed from playlist";
-                }
-            }
+            gridView.Columns[0].Width = numberWidth;
+            gridView.Columns[1].Width = coverWidth;
+            gridView.Columns[2].Width = Math.Max(150, remainingWidth * 0.4);
+            gridView.Columns[3].Width = Math.Max(120, remainingWidth * 0.3);
+            gridView.Columns[4].Width = Math.Max(120, remainingWidth * 0.3);
+            gridView.Columns[5].Width = durationWidth;
+            gridView.Columns[6].Width = playsWidth;
+            gridView.Columns[7].Width = actionsWidth;
         }
 
         private void PlaylistSongsListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
+            if (!MainWindow.IsItemActivation<ListViewItem>(e))
+                return;
+
             if (PlaylistSongsListView.SelectedItem is Song song)
-            {
-                // Play song from the filtered playlist collection
-                _musicService.PlaySongFromCollection(song, _filteredSongs);
-                StatusText.Text = $"Now playing: {song.Title}";
-            }
+                _viewModel.PlaySongCommand.Execute(song);
         }
 
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            Close();
-        }
+        private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
     }
 }

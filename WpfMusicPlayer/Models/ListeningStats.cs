@@ -3,9 +3,14 @@ using System.Collections.Generic;
 
 namespace WpfMusicPlayer.Models
 {
+    /// <summary>
+    /// One listening session. Records are keyed by file path rather than by Song.Id because
+    /// Song.Id is regenerated every time the library is scanned, which would orphan every
+    /// record as soon as the app restarts.
+    /// </summary>
     public class SongListeningRecord
     {
-        public string SongId { get; set; } = string.Empty;
+        public string FilePath { get; set; } = string.Empty;
         public DateTime ListenDate { get; set; }
         public TimeSpan ListenDuration { get; set; }
         public bool CompletedAt75Percent { get; set; }
@@ -13,10 +18,9 @@ namespace WpfMusicPlayer.Models
 
     public class SongStatistics
     {
-        public string SongId { get; set; } = string.Empty;
+        public string FilePath { get; set; } = string.Empty;
         public string SongTitle { get; set; } = string.Empty;
         public string Artist { get; set; } = string.Empty;
-        public string FilePath { get; set; } = string.Empty;
         public int TotalPlays { get; set; }
         public TimeSpan TotalListeningTime { get; set; }
         public DateTime LastPlayed { get; set; }

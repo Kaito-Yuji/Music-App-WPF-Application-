@@ -1,13 +1,8 @@
 namespace WpfMusicPlayer.Models
 {
-    public enum PlayMode
-    {
-        Normal,
-        RepeatOne,
-        RepeatAll,
-        Shuffle
-    }
-
+    /// <summary>
+    /// What happens when a track ends. Independent of shuffle, which only changes the order.
+    /// </summary>
     public enum RepeatMode
     {
         Off,

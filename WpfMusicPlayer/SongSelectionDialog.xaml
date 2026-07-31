@@ -11,6 +11,7 @@
 
     <Window.Resources>
         <converters:ByteArrayToImageConverter x:Key="ByteArrayToImageConverter"/>
+        <converters:EmptyStringToVisibilityConverter x:Key="EmptyStringToVisibilityConverter"/>
         
         <Style x:Key="ModernButton" TargetType="Button">
             <Setter Property="Background" Value="#2d2d30"/>
@@ -96,11 +97,16 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBox x:Name="SearchTextBox" Grid.Column="0"
-                         Background="#404040" Foreground="White" BorderThickness="0"
-                         Padding="10" FontSize="14" 
-                         TextChanged="SearchTextBox_TextChanged"
-                         Text="Search songs..."/>
+                <Grid Grid.Column="0">
+                    <TextBox x:Name="SearchTextBox"
+                             Background="#404040" Foreground="White" BorderThickness="0"
+                             Padding="10" FontSize="14"
+                             TextChanged="SearchTextBox_TextChanged"/>
+                    <TextBlock Text="Search songs..." Foreground="#909090" FontSize="14"
+                               Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                               Visibility="{Binding Text, ElementName=SearchTextBox,
+                                            Converter={StaticResource EmptyStringToVisibilityConverter}}"/>
+                </Grid>
                 <Button x:Name="SelectAllButton" Grid.Column="1" Content="Select All"
                         Style="{StaticResource ModernButton}" Click="SelectAllButton_Click" Background="#282828"/>
                 <Button x:Name="ClearSelectionButton" Grid.Column="2" Content="Clear All"

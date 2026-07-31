@@ -25,15 +25,20 @@ if errorlevel 1 (
 echo Python found! Continuing...
 echo.
 
-REM Install audio-separator package
-echo [2/3] Installing audio-separator package...
-echo This may take a few minutes...
-pip install audio-separator
+REM Install the Python packages both AI features need
+echo [2/3] Installing Python packages...
+echo   audio-separator + onnxruntime  - vocal separation
+echo   librosa                        - mood detection
+echo This may take several minutes...
+pip install audio-separator onnxruntime librosa
 if errorlevel 1 (
-    echo ERROR: Failed to install audio-separator package.
+    echo ERROR: Failed to install the Python packages.
     echo.
     echo Try running this command manually:
-    echo pip install audio-separator
+    echo pip install audio-separator onnxruntime librosa
+    echo.
+    echo If pip cannot find a matching version, you are probably on a Python release
+    echo that is too new. Python 3.12 is the version these packages support best.
     echo.
     pause
     exit /b 1
@@ -59,5 +64,6 @@ echo The AI audio separation feature should work properly.
 echo.
 echo Note: The AI model (66MB) will download automatically
 echo the first time you use the separation feature.
+echo Mood detection needs no model download - it measures the audio directly.
 echo.
 pause

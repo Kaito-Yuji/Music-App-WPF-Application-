@@ -38,9 +38,13 @@ def main():
     parser = argparse.ArgumentParser(description='Separate audio into vocals and accompaniment')
     parser.add_argument('input_file', help='Input audio file path (can be absolute or relative)')
     parser.add_argument('output_dir', help='Output directory for separated stems')
-    parser.add_argument('--stems', choices=['2', '4', '5'], default='2', 
+    parser.add_argument('--stems', choices=['2', '4', '5'], default='2',
                        help='Number of stems to separate (default: 2)')
-    
+    parser.add_argument('--name', default=None,
+                       help='Exact folder name to write the stems into. Defaults to a sanitized '
+                            'version of the input file name. The caller passes this so that both '
+                            'sides agree on the location without duplicating the naming rules.')
+
     if len(sys.argv) < 3:
         parser.print_help()
         sys.exit(1)
@@ -73,7 +77,7 @@ def main():
         print(f"Warning: Format '{input_file.suffix}' may not separate as well as MP3 or WAV", file=sys.stderr)
     
     # Create unique output directory for this specific song
-    song_name = sanitize_filename(input_file.stem)
+    song_name = args.name if args.name else sanitize_filename(input_file.stem)
     song_output_dir = output_dir / song_name
     temp_separation_dir = output_dir / f"temp_{song_name}"
     
