@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using WpfMusicPlayer.Models;
 
-namespace WpfMusicPlayer.Services
+namespace WpfMusicPlayer.Interfaces
 {
     public enum DialogIcon
     {
@@ -12,8 +12,10 @@ namespace WpfMusicPlayer.Services
 
     public record PlaylistDetails(string Name, string Description, byte[]? Cover);
 
-    /// <summary>Outcome of editing a song's tags. Raw artwork is kept separate from the
-    /// display thumbnail so the original image is what gets written back to the file.</summary>
+    /// <summary>
+    /// Outcome of editing a song's tags. Raw artwork is kept separate from the display thumbnail
+    /// so the original image is what gets written back to the file.
+    /// </summary>
     public record SongEditResult(Song Edited, bool AlbumArtChanged, byte[]? RawAlbumArt);
 
     /// <summary>

@@ -7,27 +7,11 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using WpfMusicPlayer.Interfaces;
 using WpfMusicPlayer.Models;
 
 namespace WpfMusicPlayer.Services
 {
-    public interface IMoodAnalyzerService
-    {
-        bool IsAvailable { get; }
-
-        /// <summary>Raised as each track finishes, carrying its file path.</summary>
-        event EventHandler<string>? MoodAnalyzed;
-
-        Task<DependencyCheck> CheckDependenciesAsync();
-
-        MoodAnalysis? GetMood(string filePath);
-
-        Task<MoodAnalysis?> AnalyzeAsync(Song song, CancellationToken cancellationToken = default);
-
-        Task AnalyzeManyAsync(IEnumerable<Song> songs, IProgress<string>? progress = null,
-            CancellationToken cancellationToken = default);
-    }
-
     /// <summary>
     /// Estimates the emotional character of a track by running the librosa-based Python script and
     /// caching what it reports. Results are keyed by file path and survive restarts, so a track is
@@ -45,29 +29,17 @@ namespace WpfMusicPlayer.Services
         };
 
         private readonly PythonRunner _python;
+        private readonly IMoodCacheRepository _cacheRepository;
         private readonly string _scriptPath;
-        private readonly string _cacheFilePath;
         private readonly Dictionary<string, MoodAnalysis> _cache;
 
-        public MoodAnalyzerService(PythonRunner python, string? cacheFilePath = null)
+        public MoodAnalyzerService(PythonRunner python, IMoodCacheRepository cacheRepository)
         {
             _python = python;
+            _cacheRepository = cacheRepository;
             _scriptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "mood_detector.py");
 
-            if (cacheFilePath != null)
-            {
-                _cacheFilePath = cacheFilePath;
-            }
-            else
-            {
-                var appFolder = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WpfMusicPlayer");
-
-                Directory.CreateDirectory(appFolder);
-                _cacheFilePath = Path.Combine(appFolder, "moods.json");
-            }
-
-            _cache = Load();
+            _cache = _cacheRepository.LoadAll();
         }
 
         public event EventHandler<string>? MoodAnalyzed;
@@ -185,36 +157,7 @@ namespace WpfMusicPlayer.Services
 
         private static string Normalise(string filePath) => filePath.ToLowerInvariant();
 
-        private Dictionary<string, MoodAnalysis> Load()
-        {
-            try
-            {
-                if (!File.Exists(_cacheFilePath))
-                    return new Dictionary<string, MoodAnalysis>();
-
-                var json = File.ReadAllText(_cacheFilePath);
-
-                return JsonSerializer.Deserialize<Dictionary<string, MoodAnalysis>>(json, SerializerOptions)
-                       ?? new Dictionary<string, MoodAnalysis>();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error loading mood cache: {ex.Message}");
-                return new Dictionary<string, MoodAnalysis>();
-            }
-        }
-
-        private void Save()
-        {
-            try
-            {
-                File.WriteAllText(_cacheFilePath, JsonSerializer.Serialize(_cache, SerializerOptions));
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error saving mood cache: {ex.Message}");
-            }
-        }
+        private void Save() => _cacheRepository.SaveAll(_cache);
 
         private class MoodPayload
         {

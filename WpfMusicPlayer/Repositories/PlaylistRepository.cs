@@ -4,40 +4,26 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using WpfMusicPlayer.Interfaces;
 using WpfMusicPlayer.Models;
 
-namespace WpfMusicPlayer.Services
+namespace WpfMusicPlayer.Repositories
 {
     /// <summary>
-    /// Stores playlists as JSON under %APPDATA%. Cover images are written as separate files:
-    /// embedding them as base64 made the playlist file grow by hundreds of kilobytes per entry
-    /// and it is rewritten every time a song is added.
+    /// Stores playlists as JSON. Cover images are written as separate files: embedding them as
+    /// base64 made the playlist file grow by hundreds of kilobytes per entry, and that file is
+    /// rewritten every time a song is added.
     /// </summary>
     public class PlaylistRepository : IPlaylistRepository
     {
-        private readonly string _playlistsFilePath;
+        private readonly JsonFileStore<List<PersistedPlaylist>> _store;
         private readonly string _coversDirectory;
 
-        private static readonly JsonSerializerOptions SerializerOptions = new()
-        {
-            WriteIndented = true,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        };
-
-        /// <param name="dataDirectory">
-        /// Where playlists and covers are stored. Defaults to the folder under %APPDATA%.
-        /// </param>
         public PlaylistRepository(string? dataDirectory = null)
         {
-            var appFolder = dataDirectory ?? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WpfMusicPlayer");
+            _store = new JsonFileStore<List<PersistedPlaylist>>("playlists.json", dataDirectory);
 
-            Directory.CreateDirectory(appFolder);
-
-            _playlistsFilePath = Path.Combine(appFolder, "playlists.json");
-            _coversDirectory = Path.Combine(appFolder, "covers");
+            _coversDirectory = Path.Combine(_store.Directory, "covers");
             Directory.CreateDirectory(_coversDirectory);
 
             Load();
@@ -122,87 +108,62 @@ namespace WpfMusicPlayer.Services
 
         public void Save()
         {
-            try
+            var data = Playlists.Select(playlist =>
             {
-                var data = Playlists.Select(playlist =>
+                SaveCover(playlist);
+
+                return new PersistedPlaylist
                 {
-                    SaveCover(playlist);
-
-                    return new PersistedPlaylist
+                    Id = playlist.Id,
+                    Name = playlist.Name,
+                    Description = playlist.Description,
+                    CreatedDate = playlist.CreatedDate,
+                    Songs = playlist.Songs.Select(s => new PersistedSong
                     {
-                        Id = playlist.Id,
-                        Name = playlist.Name,
-                        Description = playlist.Description,
-                        CreatedDate = playlist.CreatedDate,
-                        Songs = playlist.Songs.Select(s => new PersistedSong
-                        {
-                            FilePath = s.FilePath,
-                            Title = s.Title,
-                            Artist = s.Artist,
-                            Album = s.Album,
-                            Genre = s.Genre,
-                            Year = s.Year,
-                            DurationSeconds = s.Duration.TotalSeconds
-                        }).ToList()
-                    };
-                }).ToList();
+                        FilePath = s.FilePath,
+                        Title = s.Title,
+                        Artist = s.Artist,
+                        Album = s.Album,
+                        Genre = s.Genre,
+                        Year = s.Year,
+                        DurationSeconds = s.Duration.TotalSeconds
+                    }).ToList()
+                };
+            }).ToList();
 
-                File.WriteAllText(_playlistsFilePath, JsonSerializer.Serialize(data, SerializerOptions));
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error saving playlists: {ex.Message}");
-            }
+            _store.Save(data);
         }
 
         private void Load()
         {
-            try
+            foreach (var persisted in _store.Load())
             {
-                if (!File.Exists(_playlistsFilePath))
-                    return;
-
-                var json = File.ReadAllText(_playlistsFilePath);
-                if (string.IsNullOrWhiteSpace(json))
-                    return;
-
-                var data = JsonSerializer.Deserialize<List<PersistedPlaylist>>(json);
-                if (data == null)
-                    return;
-
-                foreach (var persisted in data)
+                var playlist = new Playlist
                 {
-                    var playlist = new Playlist
-                    {
-                        Id = string.IsNullOrEmpty(persisted.Id) ? Guid.NewGuid().ToString() : persisted.Id,
-                        Name = string.IsNullOrEmpty(persisted.Name) ? "Untitled Playlist" : persisted.Name,
-                        Description = persisted.Description ?? string.Empty,
-                        CreatedDate = persisted.CreatedDate,
-                        CoverImage = LoadCover(persisted.Id)
-                    };
+                    Id = string.IsNullOrEmpty(persisted.Id) ? Guid.NewGuid().ToString() : persisted.Id,
+                    Name = string.IsNullOrEmpty(persisted.Name) ? "Untitled Playlist" : persisted.Name,
+                    Description = persisted.Description ?? string.Empty,
+                    CreatedDate = persisted.CreatedDate,
+                    CoverImage = LoadCover(persisted.Id)
+                };
 
-                    foreach (var song in persisted.Songs.Where(s => !string.IsNullOrEmpty(s.FilePath)))
+                foreach (var song in persisted.Songs.Where(s => !string.IsNullOrEmpty(s.FilePath)))
+                {
+                    // Artwork is intentionally not persisted; it is restored from the file's own
+                    // tags once the library is scanned.
+                    playlist.Songs.Add(new Song
                     {
-                        // Artwork is intentionally not persisted; it is restored from the file's
-                        // own tags once the library is scanned.
-                        playlist.Songs.Add(new Song
-                        {
-                            FilePath = song.FilePath,
-                            Title = song.Title ?? string.Empty,
-                            Artist = song.Artist ?? string.Empty,
-                            Album = song.Album ?? string.Empty,
-                            Genre = song.Genre ?? string.Empty,
-                            Year = song.Year,
-                            Duration = TimeSpan.FromSeconds(song.DurationSeconds)
-                        });
-                    }
-
-                    Playlists.Add(playlist);
+                        FilePath = song.FilePath,
+                        Title = song.Title ?? string.Empty,
+                        Artist = song.Artist ?? string.Empty,
+                        Album = song.Album ?? string.Empty,
+                        Genre = song.Genre ?? string.Empty,
+                        Year = song.Year,
+                        Duration = TimeSpan.FromSeconds(song.DurationSeconds)
+                    });
                 }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error loading playlists: {ex.Message}");
+
+                Playlists.Add(playlist);
             }
         }
 

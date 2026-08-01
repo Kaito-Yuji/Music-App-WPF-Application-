@@ -8,21 +8,14 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using WpfMusicPlayer.Interfaces;
+using WpfMusicPlayer.Models;
 
 namespace WpfMusicPlayer.Services
 {
-    public class AudioSeparatorService
+    public class AudioSeparatorService : IAudioSeparatorService
     {
-        // Event for progress reporting
-        public event EventHandler<ProgressEventArgs>? ProgressChanged;
-
-        public class ProgressEventArgs : EventArgs
-        {
-            public string Message { get; set; } = string.Empty;
-            public int? Percentage { get; set; }
-            public bool IsCompleted { get; set; }
-            public bool IsError { get; set; }
-        }
+        public event EventHandler<AudioProgressEventArgs>? ProgressChanged;
 
         // The wrapper script reports its progress as lines like "Progress: 45%"
         private static readonly Regex ProgressRegex = new(@"^Progress:\s*(\d+)\s*%", RegexOptions.Compiled);
@@ -123,7 +116,7 @@ namespace WpfMusicPlayer.Services
 
         private void ReportProgress(string message, int? percentage = null, bool isCompleted = false, bool isError = false)
         {
-            ProgressChanged?.Invoke(this, new ProgressEventArgs
+            ProgressChanged?.Invoke(this, new AudioProgressEventArgs
             {
                 Message = message,
                 Percentage = percentage,

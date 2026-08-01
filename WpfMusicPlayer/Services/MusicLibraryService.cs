@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using WpfMusicPlayer.Interfaces;
 using WpfMusicPlayer.Models;
 
 namespace WpfMusicPlayer.Services

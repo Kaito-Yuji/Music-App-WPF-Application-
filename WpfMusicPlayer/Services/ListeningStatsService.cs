@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Text.Json;
+using WpfMusicPlayer.Interfaces;
 using WpfMusicPlayer.Models;
 
 namespace WpfMusicPlayer.Services
@@ -23,7 +22,7 @@ namespace WpfMusicPlayer.Services
         /// </summary>
         private static readonly TimeSpan MaxCreditPerUpdate = TimeSpan.FromSeconds(1);
 
-        private readonly string _statsFilePath;
+        private readonly IListeningStatsRepository _repository;
         private readonly List<SongListeningRecord> _listeningRecords;
         private readonly Dictionary<string, int> _playCounts;
 
@@ -40,25 +39,11 @@ namespace WpfMusicPlayer.Services
         /// </summary>
         public event EventHandler<string>? PlayCounted;
 
-        /// <param name="statsFilePath">
-        /// Where records are stored. Defaults to the file under %APPDATA%; pass an explicit path
-        /// to keep a separate history, for example when trying something out.
-        /// </param>
-        public ListeningStatsService(string? statsFilePath = null)
+        public ListeningStatsService(IListeningStatsRepository repository)
         {
-            if (statsFilePath != null)
-            {
-                _statsFilePath = statsFilePath;
-            }
-            else
-            {
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var appFolder = Path.Combine(appDataPath, "WpfMusicPlayer");
-                Directory.CreateDirectory(appFolder);
-                _statsFilePath = Path.Combine(appFolder, "listening_stats.json");
-            }
+            _repository = repository;
 
-            _listeningRecords = LoadStatsFromFile();
+            _listeningRecords = _repository.LoadAll();
             _playCounts = BuildPlayCounts(_listeningRecords);
         }
 
@@ -204,7 +189,7 @@ namespace WpfMusicPlayer.Services
                 _playCounts[key] = _playCounts.TryGetValue(key, out var count) ? count + 1 : 1;
             }
 
-            SaveStatsToFile();
+            _repository.SaveAll(_listeningRecords);
 
             _currentFilePath = string.Empty;
             _currentSongSessionTime = TimeSpan.Zero;
@@ -254,44 +239,6 @@ namespace WpfMusicPlayer.Services
 
         private static bool PathEquals(string left, string right) =>
             string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
-
-        private void SaveStatsToFile()
-        {
-            try
-            {
-                var json = JsonSerializer.Serialize(_listeningRecords, new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                });
-                File.WriteAllText(_statsFilePath, json);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error saving listening stats: {ex.Message}");
-            }
-        }
-
-        private List<SongListeningRecord> LoadStatsFromFile()
-        {
-            try
-            {
-                if (!File.Exists(_statsFilePath))
-                    return new List<SongListeningRecord>();
-
-                var json = File.ReadAllText(_statsFilePath);
-                var records = JsonSerializer.Deserialize<List<SongListeningRecord>>(json)
-                              ?? new List<SongListeningRecord>();
-
-                // Records written before stats were keyed by path carry no file path and can
-                // never be matched to a song again, so drop them rather than showing blanks.
-                return records.Where(r => !string.IsNullOrEmpty(r.FilePath)).ToList();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error loading listening stats: {ex.Message}");
-                return new List<SongListeningRecord>();
-            }
-        }
 
         #endregion
     }

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Toolkit.Mvvm.ComponentModel;
 using Microsoft.Toolkit.Mvvm.Input;
+using WpfMusicPlayer.Interfaces;
 using WpfMusicPlayer.Models;
 using WpfMusicPlayer.Services;
 
@@ -810,7 +811,7 @@ namespace WpfMusicPlayer.ViewModels
             StatusText = "Cancelling...";
         }
 
-        private void OnSeparationProgress(object? sender, AudioSeparatorService.ProgressEventArgs e)
+        private void OnSeparationProgress(object? sender, AudioProgressEventArgs e)
         {
             RunOnUi(() =>
             {

@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using WpfMusicPlayer.Models;
 
-namespace WpfMusicPlayer.Services
+namespace WpfMusicPlayer.Interfaces
 {
+    /// <summary>The audio engine and the play queue.</summary>
     public interface IPlaybackService : INotifyPropertyChanged, IDisposable
     {
         ObservableCollection<Song> Queue { get; }
@@ -27,9 +29,9 @@ namespace WpfMusicPlayer.Services
         event EventHandler? PositionChanged;
         event EventHandler? QueueChanged;
 
-        void SetQueue(System.Collections.Generic.IEnumerable<Song> songs, int startIndex = 0);
+        void SetQueue(IEnumerable<Song> songs, int startIndex = 0);
         void PlaySong(Song song);
-        void PlaySongFromCollection(Song song, System.Collections.Generic.IEnumerable<Song> collection);
+        void PlaySongFromCollection(Song song, IEnumerable<Song> collection);
         void PlaySongAtIndex(int index);
 
         /// <summary>
@@ -37,6 +39,7 @@ namespace WpfMusicPlayer.Services
         /// starting playback, so a restored session opens exactly where it was left.
         /// </summary>
         void PrepareAt(int index, TimeSpan position);
+
         void AddToQueue(Song song);
         void RemoveFromQueue(Song song);
 

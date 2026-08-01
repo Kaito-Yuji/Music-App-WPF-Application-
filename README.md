@@ -151,26 +151,35 @@ Restart the app afterwards — Python is detected once, when the app starts.
 
 ```
 WpfMusicPlayer/
-  Models/          Song, Playlist, statistics records, enums
-  Services/        One responsibility each, all behind interfaces:
-                     PlaybackService     audio engine and queue
-                     QueueNavigator      shuffle/repeat rules (pure logic)
-                     MusicLibraryService scanning, tags, search
-                     PlaylistRepository  playlist storage
-                     ListeningStatsService  play counting and history
-                     AudioSeparatorService  runs the separation wrapper
-                     MoodAnalyzerService    runs the mood detector, caches results
-                     PythonRunner        shared interpreter discovery and process plumbing
-                     KaraokeService      stem separation + playback swapping
-                     AppServices         composition root
+  Models/          Plain data: Song, Playlist, statistics records, enums
+  Interfaces/      Every contract in one place - services and repositories alike
+  Repositories/    Persistence only:
+                     JsonFileStore            shared JSON read/write
+                     PlaylistRepository       playlists.json + covers/
+                     ListeningStatsRepository listening_stats.json
+                     MoodCacheRepository      moods.json
+                     AppStateRepository       app_state.json
+  Services/        Business logic:
+                     PlaybackService       audio engine and queue
+                     QueueNavigator        shuffle/repeat rules (pure logic)
+                     MusicLibraryService   scanning, tags, search
+                     ListeningStatsService play counting
+                     AudioSeparatorService runs the separation wrapper
+                     MoodAnalyzerService   runs the mood detector
+                     KaraokeService        stem separation + playback swapping
+                     PythonRunner          interpreter discovery and process plumbing
+                     AppServices           composition root
   ViewModels/      MainViewModel, PlaylistDetailsViewModel, ListeningStatsViewModel
   Converters/      Value converters used by the XAML
   Resources/       audio_separator_wrapper.py, mood_detector.py
 ```
 
+Dependencies point inwards and meet at `Interfaces`: view models, services and repositories never
+reference each other's concrete types, and every layer is free to use `Models`.
+
 The UI follows MVVM: views bind to view models and raise commands, and view models reach the
 window system only through `IDialogService`, so no view model depends on WPF window types
-directly.
+directly. Services never touch the disk either - that belongs to the repositories.
 
 ### Where data lives
 

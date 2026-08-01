@@ -7,39 +7,23 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using WpfMusicPlayer.Interfaces;
 using WpfMusicPlayer.Models;
 
 namespace WpfMusicPlayer.Services
 {
-    public interface IKaraokeService : INotifyPropertyChanged
-    {
-        bool IsAvailable { get; }
-        bool IsInKaraokeMode { get; }
-
-        event EventHandler<AudioSeparatorService.ProgressEventArgs>? Progress;
-
-        bool StemsExist(Song song);
-        Task<DependencyCheck> CheckDependenciesAsync();
-        Task<bool> EnableAsync(CancellationToken cancellationToken = default);
-        bool Disable();
-        Task<bool> ExportAsync(Song song, string outputPath, bool instrumental,
-            CancellationToken cancellationToken = default);
-        Task PreprocessAsync(IEnumerable<Song> songs, IProgress<string>? progress = null,
-            CancellationToken cancellationToken = default);
-    }
-
     /// <summary>
     /// Coordinates stem separation with playback: swapping the audio source for the instrumental
     /// stem and back again, and exporting stems to disk.
     /// </summary>
     public class KaraokeService : IKaraokeService
     {
-        private readonly AudioSeparatorService _separator;
+        private readonly IAudioSeparatorService _separator;
         private readonly IPlaybackService _playback;
 
         private bool _isInKaraokeMode;
 
-        public KaraokeService(AudioSeparatorService separator, IPlaybackService playback)
+        public KaraokeService(IAudioSeparatorService separator, IPlaybackService playback)
         {
             _separator = separator;
             _playback = playback;
@@ -50,7 +34,7 @@ namespace WpfMusicPlayer.Services
             _playback.CurrentSongChanged += (_, _) => IsInKaraokeMode = false;
         }
 
-        public event EventHandler<AudioSeparatorService.ProgressEventArgs>? Progress;
+        public event EventHandler<AudioProgressEventArgs>? Progress;
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public bool IsAvailable => _separator.IsAvailable;
@@ -184,7 +168,7 @@ namespace WpfMusicPlayer.Services
         {
             Debug.WriteLine(message);
 
-            Progress?.Invoke(this, new AudioSeparatorService.ProgressEventArgs
+            Progress?.Invoke(this, new AudioProgressEventArgs
             {
                 Message = message,
                 IsCompleted = true,

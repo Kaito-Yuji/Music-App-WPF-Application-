@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using WpfMusicPlayer.Interfaces;
 using WpfMusicPlayer.Models;
 using WpfMusicPlayer.Services;
 using WpfMusicPlayer.ViewModels;

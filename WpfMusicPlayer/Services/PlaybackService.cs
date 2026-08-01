@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Threading;
 using NAudio.Wave;
+using WpfMusicPlayer.Interfaces;
 using WpfMusicPlayer.Models;
 
 // NAudio has its own PlaybackState; the app's model type is the one meant everywhere here

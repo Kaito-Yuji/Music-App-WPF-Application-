@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.Toolkit.Mvvm.ComponentModel;
 using Microsoft.Toolkit.Mvvm.Input;
+using WpfMusicPlayer.Interfaces;
 using WpfMusicPlayer.Models;
 using WpfMusicPlayer.Services;
 

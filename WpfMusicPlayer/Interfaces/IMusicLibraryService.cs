@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using WpfMusicPlayer.Models;
 
-namespace WpfMusicPlayer.Services
+namespace WpfMusicPlayer.Interfaces
 {
     public interface IMusicLibraryService
     {

@@ -1,8 +1,9 @@
 using System;
 using WpfMusicPlayer.Models;
 
-namespace WpfMusicPlayer.Services
+namespace WpfMusicPlayer.Interfaces
 {
+    /// <summary>Decides when a play counts, and reports listening history over time.</summary>
     public interface IListeningStatsService
     {
         /// <summary>Raised with the file path of a song the moment it counts as played.</summary>

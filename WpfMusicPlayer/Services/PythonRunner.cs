@@ -6,16 +6,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using WpfMusicPlayer.Models;
 
 namespace WpfMusicPlayer.Services
 {
-    public record PythonResult(int ExitCode, string StandardOutput, string StandardError);
-
-    /// <summary>
-    /// Result of probing the Python side for everything a feature needs.
-    /// </summary>
-    public record DependencyCheck(bool IsSatisfied, string Message);
-
     /// <summary>
     /// Shared plumbing for the Python-backed features. Finds the interpreter once and runs
     /// scripts while draining both pipes, which the separation and mood features both rely on.
